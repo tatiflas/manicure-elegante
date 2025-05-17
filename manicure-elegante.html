@@ -1,0 +1,97 @@
+
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Manicure Elegante</title>
+  <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Montserrat:wght@300;500;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Montserrat', sans-serif; scroll-behavior: smooth; color: #000; }
+    header { background-color: #000; color: #F7C8E0; padding: 1rem 2rem; position: fixed; top: 0; width: 100%; z-index: 1000; display: flex; justify-content: space-between; align-items: center; }
+    header h1 { font-family: 'Great Vibes', cursive; font-size: 2rem; }
+    nav a { color: #F7C8E0; margin-left: 1rem; text-decoration: none; font-weight: 500; }
+    section { padding: 6rem 2rem 4rem; }
+    .sobre, .depoimentos { background-color: #FADADD; text-align: center; }
+    .servicos, .galeria { background-color: #fff; text-align: center; }
+    .galeria { background-color: #000; color: #F7C8E0; }
+    .agendamento { background-color: #000; color: #F7C8E0; text-align: center; }
+    h2 { margin-bottom: 1rem; font-family: 'Great Vibes', cursive; font-size: 2.5rem; }
+    .btn { background-color: #000; color: #F7C8E0; border: none; padding: 0.75rem 1.5rem; margin-top: 1rem; cursor: pointer; transition: 0.3s; }
+    .btn:hover { background-color: #F7C8E0; color: #000; }
+    .servicos .card, .depoimentos .comentario { display: inline-block; margin: 1rem; padding: 1rem; border: 1px solid #F7C8E0; border-radius: 8px; max-width: 250px; }
+    .galeria img { width: 200px; margin: 10px; border: 2px solid #F7C8E0; transition: transform 0.3s; }
+    .galeria img:hover { transform: scale(1.05); }
+    form { display: flex; flex-direction: column; max-width: 400px; margin: 0 auto; gap: 1rem; }
+    input, select, textarea { padding: 0.5rem; border-radius: 4px; border: none; }
+    footer { background-color: #000; color: #F7C8E0; text-align: center; padding: 1rem; }
+    .whatsapp-button { position: fixed; bottom: 20px; right: 20px; background-color: #25D366; color: white; padding: 12px 16px; border-radius: 50%; text-align: center; font-size: 20px; z-index: 1001; text-decoration: none; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Manicure Elegante</h1>
+    <nav>
+      <a href="#sobre">Sobre</a>
+      <a href="#servicos">Serviços</a>
+      <a href="#galeria">Galeria</a>
+      <a href="#depoimentos">Depoimentos</a>
+      <a href="#agendamento">Agendamento</a>
+    </nav>
+  </header>
+
+  <section id="sobre" class="sobre">
+    <h2>Sobre Mim</h2>
+    <p>Apaixonada por realçar a beleza das mãos, trazendo elegância e autoestima para cada cliente. Agende seu horário e venha se sentir ainda mais maravilhosa!</p>
+    <button class="btn">Agende Agora</button>
+  </section>
+
+  <section id="servicos" class="servicos">
+    <h2>Serviços</h2>
+    <div class="card">Esmaltação Tradicional</div>
+    <div class="card">Nail Art Personalizada</div>
+    <div class="card">Alongamento em Gel</div>
+    <div class="card">SPA das Mãos</div>
+  </section>
+
+  <section id="galeria" class="galeria">
+    <h2>Galeria</h2>
+    <img src="https://via.placeholder.com/200x200?text=Unha+1" alt="Unha 1" />
+    <img src="https://via.placeholder.com/200x200?text=Unha+2" alt="Unha 2" />
+    <img src="https://via.placeholder.com/200x200?text=Unha+3" alt="Unha 3" />
+  </section>
+
+  <section id="depoimentos" class="depoimentos">
+    <h2>Depoimentos</h2>
+    <div class="comentario">"Simplesmente amei minhas unhas! Atendimento impecável."</div>
+    <div class="comentario">"Melhor manicure que já fui! Super recomendo."</div>
+  </section>
+
+  <section id="agendamento" class="agendamento">
+    <h2>Agende seu Horário</h2>
+    <form>
+      <input type="text" placeholder="Nome" required />
+      <input type="tel" placeholder="Telefone" required />
+      <select>
+        <option>Escolha o serviço</option>
+        <option>Esmaltação Tradicional</option>
+        <option>Nail Art Personalizada</option>
+        <option>Alongamento em Gel</option>
+        <option>SPA das Mãos</option>
+      </select>
+      <input type="date" required />
+      <input type="time" required />
+      <textarea placeholder="Observações"></textarea>
+      <button type="submit" class="btn">Enviar</button>
+    </form>
+  </section>
+
+  <footer>
+    <p>© 2025 Manicure Elegante | Desenvolvido com carinho 💅</p>
+    <p><a href="https://instagram.com" style="color:#F7C8E0;">Instagram</a> | <a href="https://wa.me/5511999999999" style="color:#F7C8E0;">WhatsApp</a></p>
+  </footer>
+
+  <a class="whatsapp-button" href="https://wa.me/5511999999999" target="_blank">💬</a>
+</body>
+</html>
