@@ -5,8 +5,11 @@
  * O que ele faz:
  *  - GET  (sem senha): devolve os dados do cardápio para o site.
  *  - POST (com senha): salva os dados vindos do painel e recebe fotos (guardadas no Google Drive).
+ *  - POST "pagar" (sem senha): cria o link de pagamento do Mercado Pago, com o valor
+ *    recalculado aqui a partir dos preços salvos (o site não consegue alterar o valor).
+ *  - Avisos do Mercado Pago: atualizam a aba "Pagamentos" (aprovado, recusado...).
  *
- * A senha do painel fica na aba "Config", célula B1.
+ * Aba "Config": B1 = senha do painel · B2 = Access Token do Mercado Pago (opcional).
  */
 
 const ABA_DADOS = 'Dados';
@@ -17,11 +20,14 @@ const ABA_HISTORICO = 'Histórico';
 const PASTA_FOTOS = 'Cardápio – Fotos';
 const PEDACO = 45000; // uma célula guarda até 50 mil caracteres
 const CACHE_CHAVE = 'dados_cardapio';
+const ABA_PAGAMENTOS = 'Pagamentos';
+const MP_API = 'https://api.mercadopago.com';
 
 /** Rode esta função uma vez (botão ▶ Executar) para criar as abas. */
 function configurar() {
   const ss = SpreadsheetApp.getActive();
   [ABA_DADOS, ABA_BACKUP, ABA_LISTA, ABA_HISTORICO].forEach(n => ss.getSheetByName(n) || ss.insertSheet(n));
+  abaPagamentos_();
   let cfg = ss.getSheetByName(ABA_CONFIG);
   if (!cfg) {
     cfg = ss.insertSheet(ABA_CONFIG, 0);
@@ -29,6 +35,7 @@ function configurar() {
     cfg.getRange('A3').setValue('Troque a senha em B1. Não apague as outras abas: elas guardam o cardápio.');
     cfg.setColumnWidth(1, 180); cfg.setColumnWidth(2, 220);
   }
+  if (!cfg.getRange('A2').getValue()) cfg.getRange('A2').setValue('Token Mercado Pago (opcional)');
   pasta_();
   return 'Pronto! Agora troque a senha na aba Config e publique: Implantar → Nova implantação → App da Web.';
 }
@@ -39,8 +46,19 @@ function doGet() {
 }
 
 function doPost(e) {
-  let req;
-  try { req = JSON.parse(e.postData.contents); } catch (err) { return saida_({ ok: false, erro: 'Requisição inválida' }); }
+  const prm = (e && e.parameter) || {};
+  let req = {};
+  try { req = JSON.parse(e.postData.contents); } catch (err) { if (!prm.type && !prm.topic) return saida_({ ok: false, erro: 'Requisição inválida' }); }
+
+  // aviso automático do Mercado Pago (pagamento aprovado, recusado...)
+  if (prm.type === 'payment' || prm.topic === 'payment' || req.type === 'payment' || req.topic === 'payment') {
+    return saida_(notificacaoMP_(prm['data.id'] || prm.id || (req.data && req.data.id) || (req.resource && String(req.resource).split('/').pop())));
+  }
+  // cliente finalizando o pedido com pagamento on-line (não exige senha)
+  if (req.acao === 'pagar') {
+    try { return saida_(pagar_(req)); } catch (err) { return saida_({ ok: false, erro: err.message }); }
+  }
+
   if (!senhaOk_(req.senha)) { Utilities.sleep(1200); return saida_({ ok: false, erro: 'Senha incorreta' }); }
 
   const lock = LockService.getScriptLock();
@@ -141,4 +159,109 @@ function atualizarLista_(d) {
 function pasta_() {
   const it = DriveApp.getFoldersByName(PASTA_FOTOS);
   return it.hasNext() ? it.next() : DriveApp.createFolder(PASTA_FOTOS);
+}
+
+/* ---------------- Mercado Pago ---------------- */
+function tokenMP_() {
+  const cfg = SpreadsheetApp.getActive().getSheetByName(ABA_CONFIG);
+  return cfg ? String(cfg.getRange('B2').getValue()).trim() : '';
+}
+
+function abaPagamentos_() {
+  const ss = SpreadsheetApp.getActive();
+  let sh = ss.getSheetByName(ABA_PAGAMENTOS);
+  if (!sh) {
+    sh = ss.insertSheet(ABA_PAGAMENTOS);
+    sh.getRange(1, 1, 1, 9).setValues([['Data', 'Pedido', 'Status', 'Valor (R$)', 'Forma', 'Cliente', 'Telefone', 'ID Mercado Pago', 'Atualizado em']]);
+    sh.getRange(1, 1, 1, 9).setFontWeight('bold');
+    sh.setFrozenRows(1);
+  }
+  return sh;
+}
+
+/** Calcula o total a partir dos preços SALVOS na planilha e cria o link de pagamento. */
+function pagar_(req) {
+  const token = tokenMP_();
+  const d = JSON.parse(lerDados_() || 'null');
+  if (!token || !d || !d.store.mercadoPago) return { ok: false, erro: 'Pagamento on-line indisponível no momento.' };
+
+  const itens = {};
+  d.menu.forEach(c => (c.items || []).forEach(i => { if (!i.hidden) itens[i.id] = i; }));
+  let sub = 0;
+  const nomes = [];
+  (req.itens || []).slice(0, 50).forEach(l => {
+    const i = itens[l.id];
+    if (!i) throw new Error('Um serviço do carrinho mudou. Atualize a página e tente de novo.');
+    const qtd = Math.max(1, Math.min(20, parseInt(l.qty, 10) || 1));
+    const opcoes = [];
+    (i.groups || []).forEach(g => (g.options || []).forEach(o => opcoes.push(o)));
+    let unit = +i.price || 0;
+    (l.opts || []).forEach(n => { const o = opcoes.find(x => x.n === n); if (o) unit += +o.p || 0; });
+    sub += unit * qtd;
+    nomes.push(qtd + 'x ' + i.name);
+  });
+  const cp = req.cupom && d.store.coupons && d.store.coupons[req.cupom];
+  const desc = !cp ? 0 : cp.type === 'pct' ? sub * cp.value / 100 : Math.min(cp.value, sub);
+  const taxa = req.modo === 'domicilio' && d.store.homeService !== false ? (+d.store.homeFee || 0) : 0;
+  const total = Math.round((sub - desc + taxa) * 100) / 100;
+  if (total < 1) return { ok: false, erro: 'Valor muito baixo para pagamento on-line.' };
+
+  const pedido = String(req.pedido || '').replace(/[^\w-]/g, '').slice(0, 30) || ('P' + Date.now());
+  const cliente = req.cliente || {};
+  const pref = {
+    items: [{ id: pedido, title: (d.store.name + ' – ' + nomes.join(', ')).slice(0, 250), quantity: 1, unit_price: total, currency_id: 'BRL' }],
+    external_reference: pedido,
+    payer: { name: String(cliente.nome || '').slice(0, 80) },
+    statement_descriptor: String(d.store.name || '').normalize('NFD').replace(/[^A-Za-z0-9 ]/g, '').slice(0, 13),
+    notification_url: ScriptApp.getService().getUrl(),
+  };
+  const volta = String(req.voltar || '');
+  if (/^https:\/\//.test(volta)) {
+    const s = volta.indexOf('?') < 0 ? '?' : '&';
+    pref.back_urls = { success: volta + s + 'pagamento=aprovado', pending: volta + s + 'pagamento=em-analise', failure: volta + s + 'pagamento=falhou' };
+    pref.auto_return = 'approved';
+  }
+  const r = UrlFetchApp.fetch(MP_API + '/checkout/preferences', {
+    method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+    headers: { Authorization: 'Bearer ' + token }, payload: JSON.stringify(pref),
+  });
+  const j = JSON.parse(r.getContentText() || '{}');
+  if (r.getResponseCode() >= 300 || !j.init_point) return { ok: false, erro: 'O Mercado Pago recusou: ' + (j.message || r.getResponseCode()) };
+
+  const lock = LockService.getScriptLock();
+  if (lock.tryLock(10000)) {
+    try { abaPagamentos_().appendRow([new Date(), pedido, '🕓 aguardando pagamento', total, '', String(cliente.nome || ''), "'" + String(cliente.telefone || ''), '', new Date()]); }
+    finally { lock.releaseLock(); }
+  }
+  return { ok: true, url: j.init_point, total: total };
+}
+
+/** Confere o pagamento direto no Mercado Pago (não confia no aviso) e atualiza a aba Pagamentos. */
+function notificacaoMP_(id) {
+  const token = tokenMP_();
+  if (!id || !token) return { ok: true };
+  const r = UrlFetchApp.fetch(MP_API + '/v1/payments/' + encodeURIComponent(id), { headers: { Authorization: 'Bearer ' + token }, muteHttpExceptions: true });
+  if (r.getResponseCode() !== 200) return { ok: true };
+  const p = JSON.parse(r.getContentText());
+  const status = {
+    approved: '✅ aprovado', pending: '🕓 pendente', in_process: '🔎 em análise', authorized: '🔎 autorizado',
+    rejected: '❌ recusado', cancelled: '🚫 cancelado', refunded: '↩️ estornado', charged_back: '⚠️ contestado',
+  }[p.status] || p.status;
+  const forma = { credit_card: 'Cartão de crédito', debit_card: 'Cartão de débito', bank_transfer: 'Pix', ticket: 'Boleto', account_money: 'Saldo Mercado Pago' }[p.payment_type_id] || p.payment_type_id || '';
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(20000)) return { ok: true };
+  try {
+    const sh = abaPagamentos_();
+    const n = sh.getLastRow();
+    const pedidos = n > 1 ? sh.getRange(2, 2, n - 1, 1).getValues().map(x => String(x[0])) : [];
+    const k = pedidos.lastIndexOf(String(p.external_reference));
+    const linha = [status, p.transaction_amount, forma];
+    if (k >= 0) {
+      sh.getRange(k + 2, 3, 1, 3).setValues([linha]);
+      sh.getRange(k + 2, 8, 1, 2).setValues([[String(p.id), new Date()]]);
+    } else {
+      sh.appendRow([new Date(), p.external_reference || '', status, p.transaction_amount, forma, '', '', String(p.id), new Date()]);
+    }
+  } finally { lock.releaseLock(); }
+  return { ok: true };
 }

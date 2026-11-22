@@ -288,7 +288,8 @@ const move = (arr, i, d) => { const j = i + d; if (j < 0 || j >= arr.length) ret
 let conn = LS.get('me_admin_conn', null);   // { mode: 'sheet', url, senha } | { mode: 'local' }
 let data = null, saved = null, defaults = null, tab = 'loja', editing = null, saving = false;
 const frame = $('#frame');
-const PAYS = [['pix', '⚡ Pix'], ['credito', '💳 Crédito'], ['debito', '💳 Débito'], ['dinheiro', '💵 Dinheiro']];
+const PAYS = [['pix', '⚡ Pix (QR Code)'], ['online', '🌐 Cartão on-line'], ['credito', '💳 Crédito na hora'], ['debito', '💳 Débito na hora'], ['dinheiro', '💵 Dinheiro']];
+const PIX_TYPES = [['email', 'E-mail'], ['phone', 'Celular'], ['cpf', 'CPF'], ['cnpj', 'CNPJ'], ['random', 'Chave aleatória']];
 const DAYS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 const PRESETS = [
   ['Rosa elegante', { brand: '#0d0b0c', accent: '#F7C8E0', accentSoft: '#FADADD', accentStrong: '#c2457c', bg: '#fdf6f8' }],
@@ -434,7 +435,7 @@ const TABS = {
       ${F('Especialidades (aparece abaixo do nome)', 'store.sub', { ph: 'Manicure · Pedicure · Nail Art' })}
       <div class="row2">
         ${F('WhatsApp que recebe os pedidos', 'store.whatsapp', { ph: '5511999999999', attrs: 'inputmode="numeric" data-digits', hint: '55 + DDD + número, só números', hintId: 'waHint' })}
-        ${F('Chave Pix', 'store.pixKey')}
+        ${F('Cidade da loja', 'store.pixCity', { ph: 'Ex.: São Paulo' })}
       </div>
       <div class="row2">
         ${F('Instagram (link)', 'store.instagram', { ph: 'https://instagram.com/sualoja' })}
@@ -448,6 +449,24 @@ const TABS = {
       ${s.homeService !== false ? F('Taxa do atendimento a domicílio (R$)', 'store.homeFee', { num: true }) : ''}
       <p class="f"><span>Formas de pagamento aceitas</span></p>
       <div class="row2">${PAYS.map(([id, l]) => `<label class="sw" style="margin-top:4px"><input type="checkbox" data-pay="${id}" ${s.pays.includes(id) ? 'checked' : ''} /><span>${l}</span></label>`).join('')}</div>
+    </div>
+    <div class="box"><h2>⚡ Pix</h2><p class="desc">A cliente recebe um QR Code e o código copia e cola <b>já com o valor do pedido</b>. O dinheiro cai direto na sua conta, sem taxa.</p>
+      <div class="row2">
+        ${F('Chave Pix', 'store.pixKey', { ph: 'vazio = sem Pix' })}
+        <label class="f"><span>Tipo da chave</span><select data-path="store.pixType">${PIX_TYPES.map(([v, l]) => `<option value="${v}" ${(s.pixType || 'email') === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+      </div>
+      ${F('Nome de quem recebe', 'store.pixName', { ph: 'Igual ao cadastrado no banco (vazio = nome da loja)', hint: 'Aparece no app do banco da cliente na hora de pagar.' })}
+    </div>
+    <div class="box"><h2>🌐 Cartão on-line (Mercado Pago)</h2>
+      <p class="desc">A cliente paga no Mercado Pago com cartão de crédito (até 12x), Pix ou boleto. Cada pagamento aparece na aba <b>Pagamentos</b> da planilha. O Mercado Pago cobra uma taxa por venda.</p>
+      ${conn.mode === 'sheet' ? CHK('Ativar pagamento on-line pelo Mercado Pago', 'store.mercadoPago') : '<p class="desc" style="color:var(--danger)">Disponível só com a planilha conectada.</p>'}
+      ${s.mercadoPago && conn.mode === 'sheet' ? `<details class="f" open><summary style="cursor:pointer;font-weight:600;font-size:.8rem">Como ligar a sua conta (uma vez)</summary>
+        <ol style="padding-left:18px;font-size:.78rem;line-height:1.6;margin-top:6px">
+          <li>Entre em <a href="https://www.mercadopago.com.br/developers/panel/app" target="_blank" rel="noopener">mercadopago.com.br/developers</a> com a conta da loja → <b>Criar aplicação</b> (escolha "Pagamentos on-line" → "Checkout Pro").</li>
+          <li>Abra <b>Credenciais de produção</b> e copie o <b>Access Token</b> (começa com <code>APP_USR-</code>).</li>
+          <li>Cole na <b>planilha</b>, aba <b>Config</b>, célula <b>B2</b>. <b>Nunca</b> cole o token aqui no painel nem no site.</li>
+          <li>Clique em <b>Salvar</b> aqui no painel e faça um pedido de teste.</li>
+        </ol></details>` : ''}
     </div>
     <div class="box"><h2>Horário de funcionamento</h2><p class="desc">Define o aviso "Aberto agora" e os horários que a cliente pode escolher.</p>
       <div class="hours">${DAYS.map((d, k) => { const h = s.hours[k]; return `<div class="hrow">
