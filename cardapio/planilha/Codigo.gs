@@ -10,6 +10,15 @@
  *  - Avisos do Mercado Pago: atualizam a aba "Pagamentos" (aprovado, recusado...).
  *
  * Aba "Config": B1 = senha do painel · B2 = Access Token do Mercado Pago (opcional).
+ *
+ * PASSO A PASSO RÁPIDO
+ *  1. No topo do editor, escolha a função "configurar" e clique em ▶ Executar (autorize).
+ *  2. Troque a senha na aba Config da planilha (célula B1).
+ *  3. Escolha a função "verificar" e clique em ▶ Executar: ela diz o que falta.
+ *  4. Implantar → Nova implantação → App da Web → Executar como "Eu" → Acesso "Qualquer pessoa".
+ *  ⚠ NÃO execute doGet nem doPost pelo editor: elas só funcionam chamadas pelo site.
+ *  ⚠ Erro de sintaxe ao salvar? Em ⚙ Configurações do projeto, marque
+ *    "Ativar o ambiente de execução do Chrome V8".
  */
 
 const ABA_DADOS = 'Dados';
@@ -23,9 +32,25 @@ const CACHE_CHAVE = 'dados_cardapio';
 const ABA_PAGAMENTOS = 'Pagamentos';
 const MP_API = 'https://api.mercadopago.com';
 
+/**
+ * Planilha onde ficam os dados. Funciona tanto com o script criado pela planilha
+ * (Extensões → Apps Script) quanto com um projeto avulso criado em script.google.com:
+ * nesse caso, "configurar" cria uma planilha nova e guarda o endereço dela.
+ */
+function planilha_() {
+  const ativa = SpreadsheetApp.getActive();
+  if (ativa) return ativa;
+  const props = PropertiesService.getScriptProperties();
+  const id = props.getProperty('PLANILHA_ID');
+  if (id) return SpreadsheetApp.openById(id);
+  const nova = SpreadsheetApp.create('Cardápio – Dados');
+  props.setProperty('PLANILHA_ID', nova.getId());
+  return nova;
+}
+
 /** Rode esta função uma vez (botão ▶ Executar) para criar as abas. */
 function configurar() {
-  const ss = SpreadsheetApp.getActive();
+  const ss = planilha_();
   [ABA_DADOS, ABA_BACKUP, ABA_LISTA, ABA_HISTORICO].forEach(n => ss.getSheetByName(n) || ss.insertSheet(n));
   abaPagamentos_();
   let cfg = ss.getSheetByName(ABA_CONFIG);
@@ -37,15 +62,39 @@ function configurar() {
   }
   if (!cfg.getRange('A2').getValue()) cfg.getRange('A2').setValue('Token Mercado Pago (opcional)');
   pasta_();
-  return 'Pronto! Agora troque a senha na aba Config e publique: Implantar → Nova implantação → App da Web.';
+  const msg = 'Pronto! Planilha: ' + ss.getUrl() + '\n→ Agora troque a senha na aba Config (célula B1) e depois execute a função "verificar".';
+  Logger.log(msg);
+  return msg;
 }
 
-function doGet() {
+/** Execute pelo editor (▶) para conferir a configuração. O resultado aparece no "Registro de execução". */
+function verificar() {
+  const ss = planilha_(), cfg = ss.getSheetByName(ABA_CONFIG);
+  const senha = cfg ? String(cfg.getRange('B1').getValue()).trim() : '';
+  const url = ScriptApp.getService().getUrl();
+  const itens = [
+    ['Planilha', true, ss.getUrl()],
+    ['Aba Config criada', !!cfg, cfg ? 'ok' : 'execute a função "configurar"'],
+    ['Senha trocada', !!senha && senha !== 'troque-esta-senha', senha ? (senha === 'troque-esta-senha' ? 'troque a senha na célula B1 da aba Config' : 'ok') : 'a célula B1 da aba Config está vazia'],
+    ['Implantado como App da Web', !!url, url ? url : 'faça Implantar → Nova implantação → App da Web'],
+    ['Link correto termina em /exec', !!url && /\/exec$/.test(url), url && /\/dev$/.test(url) ? 'use o link /exec da implantação, não o /dev de teste' : 'ok'],
+    ['Cardápio já salvo pelo painel', !!ler_(ABA_DADOS), ler_(ABA_DADOS) ? 'ok' : 'ainda não (normal antes do 1º Salvar no painel)'],
+    ['Token do Mercado Pago (opcional)', true, tokenMP_() ? (/^APP_USR-/.test(tokenMP_()) ? 'ok' : 'o token deveria começar com APP_USR- (use o de PRODUÇÃO)') : 'não configurado'],
+  ];
+  const txt = itens.map(([n, ok, d]) => (ok ? '✅ ' : '❌ ') + n + ': ' + d).join('\n') +
+    '\n\nLembrete: na implantação, "Quem pode acessar" deve ser "Qualquer pessoa" (não "Qualquer pessoa com conta do Google").' +
+    '\nSe você alterou este código, atualize: Implantar → Gerenciar implantações → ✏️ → Versão: Nova versão → Implantar.';
+  Logger.log(txt);
+  return txt;
+}
+
+function doGet(e) {
   const json = lerDados_();
   return saida_({ ok: true, data: json ? JSON.parse(json) : null });
 }
 
 function doPost(e) {
+  if (!e || !e.postData) throw new Error('doPost só funciona chamada pelo site/painel. Para testar, execute a função "verificar".');
   const prm = (e && e.parameter) || {};
   let req = {};
   try { req = JSON.parse(e.postData.contents); } catch (err) { if (!prm.type && !prm.topic) return saida_({ ok: false, erro: 'Requisição inválida' }); }
@@ -59,6 +108,8 @@ function doPost(e) {
     try { return saida_(pagar_(req)); } catch (err) { return saida_({ ok: false, erro: err.message }); }
   }
 
+  const cfgSenha = String((planilha_().getSheetByName(ABA_CONFIG) || { getRange: () => ({ getValue: () => '' }) }).getRange('B1').getValue()).trim();
+  if (!cfgSenha || cfgSenha === 'troque-esta-senha') return saida_({ ok: false, erro: 'Defina uma senha nova na aba Config da planilha (célula B1) e tente de novo.' });
   if (!senhaOk_(req.senha)) { Utilities.sleep(1200); return saida_({ ok: false, erro: 'Senha incorreta' }); }
 
   const lock = LockService.getScriptLock();
@@ -76,7 +127,7 @@ function doPost(e) {
         gravar_(ABA_DADOS, json);
         CacheService.getScriptCache().remove(CACHE_CHAVE);
         atualizarLista_(d);
-        const hist = SpreadsheetApp.getActive().getSheetByName(ABA_HISTORICO);
+        const hist = planilha_().getSheetByName(ABA_HISTORICO);
         hist.appendRow([new Date(), 'Cardápio salvo', d.menu.reduce((n, c) => n + (c.items || []).length, 0) + ' serviços']);
         return saida_({ ok: true, salvoEm: new Date().toISOString() });
       }
@@ -114,7 +165,7 @@ function saida_(obj) {
 }
 
 function senhaOk_(senha) {
-  const cfg = SpreadsheetApp.getActive().getSheetByName(ABA_CONFIG);
+  const cfg = planilha_().getSheetByName(ABA_CONFIG);
   const certa = cfg ? String(cfg.getRange('B1').getValue()).trim() : '';
   return !!certa && certa !== 'troque-esta-senha' && String(senha || '') === certa;
 }
@@ -129,13 +180,13 @@ function lerDados_() {
 }
 
 function ler_(aba) {
-  const sh = SpreadsheetApp.getActive().getSheetByName(aba);
+  const sh = planilha_().getSheetByName(aba);
   if (!sh || sh.getLastRow() < 1) return '';
   return sh.getRange(1, 1, sh.getLastRow(), 1).getValues().map(r => String(r[0]).replace(/^~/, '')).join('');
 }
 
 function gravar_(aba, texto) {
-  const ss = SpreadsheetApp.getActive();
+  const ss = planilha_();
   const sh = ss.getSheetByName(aba) || ss.insertSheet(aba);
   sh.clearContents();
   const linhas = [];
@@ -146,7 +197,7 @@ function gravar_(aba, texto) {
 
 /** Lista legível dos serviços, só para consulta (editar aqui não muda o site). */
 function atualizarLista_(d) {
-  const ss = SpreadsheetApp.getActive();
+  const ss = planilha_();
   const sh = ss.getSheetByName(ABA_LISTA) || ss.insertSheet(ABA_LISTA);
   sh.clearContents();
   const linhas = [['Categoria', 'Serviço', 'Preço (R$)', 'Duração (min)', 'Visível no site']];
@@ -163,12 +214,12 @@ function pasta_() {
 
 /* ---------------- Mercado Pago ---------------- */
 function tokenMP_() {
-  const cfg = SpreadsheetApp.getActive().getSheetByName(ABA_CONFIG);
+  const cfg = planilha_().getSheetByName(ABA_CONFIG);
   return cfg ? String(cfg.getRange('B2').getValue()).trim() : '';
 }
 
 function abaPagamentos_() {
-  const ss = SpreadsheetApp.getActive();
+  const ss = planilha_();
   let sh = ss.getSheetByName(ABA_PAGAMENTOS);
   if (!sh) {
     sh = ss.insertSheet(ABA_PAGAMENTOS);

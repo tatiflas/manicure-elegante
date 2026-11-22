@@ -328,8 +328,16 @@ async function api(acao, extra = {}, c = conn) {
   try {
     // corpo em texto simples evita bloqueio de CORS no Google Apps Script
     r = await fetch(c.url, { method: 'POST', body: JSON.stringify({ acao, senha: c.senha, ...extra }) });
-  } catch { throw new Error('Não foi possível conectar. Confira o link e a internet.'); }
-  let j; try { j = await r.json(); } catch { throw new Error('Resposta inesperada. Confira se o link termina em /exec e se o acesso é "Qualquer pessoa".'); }
+  } catch { throw new Error('Não foi possível conectar. Confira a internet e se o link /exec é o da implantação atual (Implantar → Gerenciar implantações).'); }
+  const txt = await r.text();
+  let j; try { j = JSON.parse(txt); } catch {
+    if (/accounts\.google\.com|ServiceLogin|Fazer login|Sign in/i.test(txt) || /accounts\.google\.com/.test(r.url))
+      throw new Error('O Google pediu login: na implantação, "Quem pode acessar" precisa ser "Qualquer pessoa" (não "com conta do Google").');
+    if (/doPost|não foi encontrad|not found|Script function/i.test(txt))
+      throw new Error('A implantação está com código antigo ou incompleto. No Apps Script: Implantar → Gerenciar implantações → ✏️ → Nova versão → Implantar.');
+    const m = txt.match(/<div[^>]*>([^<]{10,200})<\/div>/);
+    throw new Error('A planilha respondeu com erro' + (m ? ': ' + m[1].trim() : '. Execute a função "verificar" no Apps Script para ver o que falta.'));
+  }
   if (!j.ok) throw new Error(j.erro || 'Erro na planilha');
   return j;
 }
@@ -368,7 +376,11 @@ function showLogin(err) {
 }
 $('#lgGo').onclick = async () => {
   const url = $('#lgUrl').value.trim(), senha = $('#lgPass').value;
-  if (!/^https:\/\/script\.google(usercontent)?\.com\/.+\/exec(\?.*)?$/.test(url)) return ($('#lgErr').textContent = 'O link deve começar com https://script.google.com/ e terminar em /exec');
+  const bad = /\/dev(\?.*)?$/.test(url) ? 'Esse é o link de teste (/dev). Use o link da implantação, que termina em /exec.'
+    : /script\.google\.com\/(home|d\/)/.test(url) ? 'Esse é o link do editor. Use o link do App da Web: Implantar → Gerenciar implantações → copie o URL que termina em /exec.'
+    : /docs\.google\.com\/spreadsheets/.test(url) ? 'Esse é o link da planilha. Use o link do App da Web (Apps Script → Implantar), que termina em /exec.'
+    : !/^https:\/\/script\.google(usercontent)?\.com\/.+\/exec(\?.*)?$/.test(url) ? 'O link deve começar com https://script.google.com/ e terminar em /exec' : '';
+  if (bad) return ($('#lgErr').textContent = bad);
   if (!senha) return ($('#lgErr').textContent = 'Digite a senha');
   $('#lgGo').disabled = true; $('#lgGo').textContent = 'Conectando…'; $('#lgErr').textContent = '';
   try { await api('testar', {}, { url, senha }); conn = { mode: 'sheet', url, senha }; LS.set('me_admin_conn', conn); await start(); }
