@@ -47,7 +47,8 @@
 .me-app .share { position: absolute; top: 14px; right: 14px; z-index: 2; width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,.12); color: #fff; display: grid; place-items: center; backdrop-filter: blur(6px); transition: transform .2s; }
 .me-app .share:active { transform: scale(.9); }
 .me-app .profile { position: relative; margin: -64px 16px 0; background: var(--surface); border-radius: 24px; padding: 64px 20px 18px; text-align: center; box-shadow: var(--shadow); animation: me-rise .8s .1s cubic-bezier(.2,.8,.2,1) both; }
-.me-app .logo { position: absolute; top: -52px; left: 50%; transform: translateX(-50%); width: 104px; height: 104px; border-radius: 50%; background: var(--brand); border: 5px solid var(--surface); display: grid; place-items: center; color: var(--accent); font-family: 'Great Vibes', cursive; font-size: 2.4rem; box-shadow: var(--shadow); }
+.me-app .logo img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+.me-app .logo { overflow: hidden; position: absolute; top: -52px; left: 50%; transform: translateX(-50%); width: 104px; height: 104px; border-radius: 50%; background: var(--brand); border: 5px solid var(--surface); display: grid; place-items: center; color: var(--accent); font-family: 'Great Vibes', cursive; font-size: 2.4rem; box-shadow: var(--shadow); }
 .me-app .profile h1 { font-family: 'Great Vibes', cursive; font-weight: 400; font-size: 2.3rem; line-height: 1.1; }
 .me-app .profile p.sub { color: var(--muted); font-size: .85rem; margin-top: 4px; }
 .me-app .status { display: inline-flex; align-items: center; gap: 8px; margin-top: 12px; font-size: .8rem; font-weight: 600; padding: 6px 12px; border-radius: 999px; background: #eaf7ef; color: var(--ok); }
@@ -98,6 +99,9 @@
 .me-app .card .dur { font-size: .68rem; color: var(--muted); }
 .me-app .add { width: 34px; height: 34px; border-radius: 12px; background: var(--brand); color: var(--accent); display: grid; place-items: center; font-size: 1.3rem; flex-shrink: 0; transition: transform .2s; }
 .me-app .add:active { transform: scale(.85); }
+.me-app .loading { text-align: center; color: var(--muted); padding: 60px 16px; }
+.me-app .loading::before { content: ""; display: block; width: 34px; height: 34px; margin: 0 auto 12px; border-radius: 50%; border: 3px solid var(--line); border-top-color: var(--accent-strong); animation: me-spin 0.8s linear infinite; }
+@keyframes me-spin { to { transform: rotate(360deg); } }
 .me-app .empty { text-align: center; color: var(--muted); padding: 40px 16px; display: none; }
 .me-app .cart-bar { position: fixed; left: 16px; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); max-width: 688px; margin: 0 auto; z-index: 99990; background: var(--brand); color: #fff; border-radius: 18px; padding: 14px 18px; display: flex; align-items: center; gap: 12px; box-shadow: 0 16px 40px -14px rgba(0,0,0,.6); transform: translateY(140%); transition: transform .45s cubic-bezier(.2,.9,.3,1.2); }
 .me-app .cart-bar.show { transform: none; }
@@ -197,7 +201,7 @@
 <div class="wrap">
   <!-- CAPA -->
   <div class="cover">
-    <div class="tagline">Beleza nas pontas dos dedos</div>
+    <div class="tagline" id="me-tagline"></div>
     <button class="share" id="me-shareBtn" aria-label="Compartilhar">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"/></svg>
     </button>
@@ -205,7 +209,7 @@
 
   <!-- PERFIL DA LOJA -->
   <div class="profile">
-    <div class="logo">ME</div>
+    <div class="logo" id="me-logo"></div>
     <h1 id="me-storeName"></h1>
     <p class="sub" id="me-storeSub"></p>
     <div class="status" id="me-status"><span class="dot"></span><span id="me-statusTxt"></span></div>
@@ -320,18 +324,31 @@
 (function () {
 
 /* =====================================================================
+   PAINEL: depois de conectar a planilha no admin.html, cole aqui o link
+   do Apps Script. Com ele preenchido, o cardápio carrega os dados salvos
+   pelo painel (e os blocos STORE/MENU abaixo viram só o padrão inicial).
+   ===================================================================== */
+const DATA_URL = '';
+
+/* =====================================================================
    CONFIGURAÇÃO — edite só este bloco para mudar loja, serviços e preços.
    Para usar fotos, coloque "img": "fotos/arquivo.jpg" no item.
    ===================================================================== */
 const STORE = {
   name: 'Manicure Elegante',
+  tagline: 'Beleza nas pontas dos dedos', // frase da capa
+  logo: 'ME',                           // texto do logo (ou use logoImg com link de imagem)
+  logoImg: '',
   sub: 'Manicure · Pedicure · Nail Art · Alongamento',
   whatsapp: '5511999999999',           // só números, com DDI 55 + DDD
   instagram: 'https://instagram.com',
-  site: '',                            // link do seu site (vazio = esconde o botão)
+  site: '',                                // vazio = esconde o botão "Site"
   address: 'Rua Exemplo, 123 – Centro, São Paulo/SP',
   mapsQuery: 'Rua Exemplo, 123, São Paulo',
   pixKey: 'seu-email@exemplo.com',     // chave Pix exibida no checkout
+  homeService: true,                   // oferece atendimento a domicílio?
+  pays: ['pix', 'credito', 'debito', 'dinheiro'], // formas de pagamento aceitas
+  colors: { brand: '#0d0b0c', accent: '#F7C8E0', accentSoft: '#FADADD', accentStrong: '#c2457c', bg: '#fdf6f8' },
   homeFee: 15,                         // taxa p/ atendimento a domicílio
   slotMinutes: 30,
   // 0=domingo … 6=sábado → [abre, fecha] em "HH:MM"; null = fechado
@@ -399,7 +416,23 @@ const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
 };
-const ITEMS = Object.fromEntries(MENU.flatMap(c => c.items.map(i => [i.id, i])));
+let ITEMS = {};
+const rebuildItems = () => { ITEMS = Object.fromEntries(MENU.flatMap(c => c.items.map(i => [i.id, i]))); };
+const THEME_ROOTS = [APP, LAYER];
+const COLOR_VARS = { brand: '--brand', accent: '--accent', accentSoft: '--accent-soft', accentStrong: '--accent-strong', bg: '--bg' };
+// substitui os dados (vindos da planilha ou do painel) mantendo os padrões para campos ausentes
+function applyData(d) {
+  if (!d || !d.store || !Array.isArray(d.menu)) return false;
+  Object.assign(STORE, d.store);
+  MENU.splice(0, MENU.length, ...d.menu);
+  return true;
+}
+function applyTheme() {
+  const c = STORE.colors || {};
+  THEME_ROOTS.forEach(el => Object.entries(COLOR_VARS).forEach(([k, v]) => c[k] ? el.style.setProperty(v, c[k]) : el.style.removeProperty(v)));
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', c.brand || '#0d0b0c');
+}
+const snapshot = () => JSON.parse(JSON.stringify({ store: STORE, menu: MENU }));
 const toMin = t => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
 const pad = n => String(n).padStart(2, '0');
 
@@ -411,6 +444,9 @@ function toast(msg) {
 /* ================= cabeçalho ================= */
 function renderHeader() {
   $('#me-storeName').textContent = STORE.name;
+  $('#me-tagline').textContent = STORE.tagline || '';
+  $('#me-logo').innerHTML = STORE.logoImg ? `<img src="${esc(STORE.logoImg)}" alt="">` : esc(STORE.logo || '');
+  if (STORE.name) document.title = STORE.name + ' – Cardápio';
   $('#me-storeSub').textContent = STORE.sub;
   $('#me-addr').textContent = STORE.address;
   $('#me-yr').textContent = new Date().getFullYear();
@@ -420,22 +456,27 @@ function renderHeader() {
   $('#me-statusTxt').textContent = open ? `Aberto agora · até ${h[1]}` : 'Fechado agora · agende para outro dia';
   $('#me-quick').innerHTML = [
     ['https://wa.me/' + STORE.whatsapp, '💬', 'WhatsApp'],
-    [STORE.instagram, '📸', 'Instagram'],
-    ['https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(STORE.mapsQuery), '📍', 'Como chegar'],
+    STORE.instagram && [STORE.instagram, '📸', 'Instagram'],
+    STORE.mapsQuery && ['https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(STORE.mapsQuery), '📍', 'Como chegar'],
     STORE.site && [STORE.site, '🌐', 'Site'],
   ].filter(Boolean).map(([href, i, l]) => `<a href="${href}" target="_blank" rel="noopener"><span>${i}</span>${l}</a>`).join('');
-  $('#me-banners').innerHTML = STORE.banners.map(b => `<div class="banner" style="background:${b.bg}"><b>${esc(b.title)}</b><small>${esc(b.text)}</small><span class="em">${b.emoji}</span></div>`).join('');
+  $('#me-banners').innerHTML = (STORE.banners || []).map(b => `<div class="banner" style="background:${esc(b.bg)}"><b>${esc(b.title)}</b><small>${esc(b.text)}</small><span class="em">${b.emoji}</span></div>`).join('');
   // carrossel automático
+  $('#me-banners').style.display = STORE.banners?.length ? '' : 'none';
+  if (renderHeader.timer) return; // o carrossel é iniciado uma única vez
   const bn = $('#me-banners'); let bi = 0;
-  setInterval(() => { if (document.hidden) return; bi = (bi + 1) % STORE.banners.length; bn.scrollTo({ left: bn.children[bi].offsetLeft - 16, behavior: 'smooth' }); }, 4500);
+  renderHeader.timer = setInterval(() => { if (document.hidden || !STORE.banners?.length) return; bi = (bi + 1) % STORE.banners.length; bn.scrollTo({ left: bn.children[bi].offsetLeft - 16, behavior: 'smooth' }); }, 4500);
 }
 
 /* ================= cardápio ================= */
 const thumb = (i, cls) => i.img ? `<div class="${cls}"><img src="${esc(i.img)}" alt="${esc(i.name)}" loading="lazy"></div>` : `<div class="${cls}" style="background:${i.bg}">${i.emoji}</div>`;
 
+let observers = [];
 function renderMenu() {
-  $('#me-cats').innerHTML = MENU.map((c, k) => `<button class="cat${k ? '' : ' active'}" data-cat="${c.id}">${esc(c.name)}</button>`).join('');
-  $('#me-menu').innerHTML = MENU.map(c => `
+  observers.forEach(o => o.disconnect());
+  const VIEW = MENU.map(c => ({ ...c, items: c.items.filter(i => !i.hidden) })).filter(c => c.items.length);
+  $('#me-cats').innerHTML = VIEW.map((c, k) => `<button class="cat${k ? '' : ' active'}" data-cat="${c.id}">${esc(c.name)}</button>`).join('');
+  $('#me-menu').innerHTML = VIEW.map(c => `
     <section class="category" id="me-cat-${c.id}" data-cat="${c.id}">
       <h2>${esc(c.name)}</h2><p class="desc">${esc(c.desc)}</p>
       <div class="grid">${c.items.map(i => `
@@ -462,6 +503,7 @@ function renderMenu() {
 
   // destaque da categoria visível (scroll-spy)
   const spy = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) setActiveCat(e.target.dataset.cat); }), { rootMargin: '-45% 0px -50% 0px' });
+  observers = [io, spy];
   APP.querySelectorAll('section.category').forEach(s => spy.observe(s));
 }
 function setActiveCat(id) {
@@ -554,7 +596,7 @@ let coupon = store.get('me_coupon', null);
 const lineUnit = l => ITEMS[l.id].price + l.extra;
 function totals() {
   const sub = cart.reduce((s, l) => s + lineUnit(l) * l.qty, 0);
-  const c = coupon && STORE.coupons[coupon];
+  const c = coupon && STORE.coupons?.[coupon];
   const disc = !c ? 0 : c.type === 'pct' ? sub * c.value / 100 : Math.min(c.value, sub);
   const fee = checkout.mode === 'domicilio' ? STORE.homeFee : 0;
   const dur = cart.reduce((s, l) => s + (ITEMS[l.id].dur || 0) * l.qty, 0);
@@ -608,10 +650,11 @@ $('#me-cartLines').onclick = e => {
 $('#me-cartBar').onclick = () => { renderCart(); show('#me-cartSheet'); };
 $('#me-couponBtn').onclick = () => {
   const c = $('#me-coupon').value.trim().toUpperCase(), m = $('#me-couponMsg');
-  if (STORE.coupons[c]) { coupon = c; m.style.color = 'var(--ok)'; m.textContent = '✓ ' + STORE.coupons[c].label; }
+  if (STORE.coupons?.[c]) { coupon = c; m.style.color = 'var(--ok)'; m.textContent = '✓ ' + STORE.coupons[c].label; }
   else { coupon = null; m.style.color = 'var(--danger)'; m.textContent = 'Cupom inválido'; }
   saveCart();
 };
+if (coupon && !STORE.coupons?.[coupon]) coupon = null;
 if (coupon) { $('#me-coupon').value = coupon; $('#me-couponMsg').textContent = '✓ ' + STORE.coupons[coupon].label; $('#me-couponMsg').style.color = 'var(--ok)'; }
 
 /* cliques nos cards */
@@ -670,7 +713,11 @@ $('#me-toCheckout').onclick = () => {
   ['Name', 'Phone', 'Cep', 'Num', 'Street', 'Hood', 'Comp', 'City'].forEach(k => { if (c[k]) $('#me-c' + k).value = c[k]; });
   const today = new Date(); $('#me-cDate').min = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
   if (!$('#me-cDate').value) $('#me-cDate').value = $('#me-cDate').min;
-  fillTimes(); chips('#me-modeChips', MODES, 'mode'); chips('#me-payChips', PAYS, 'pay'); syncCheckout();
+  const modes = MODES.filter(m => m.id !== 'domicilio' || STORE.homeService !== false);
+  const pays = PAYS.filter(p => !STORE.pays || STORE.pays.includes(p.id));
+  if (!modes.some(m => m.id === checkout.mode)) checkout.mode = modes[0].id;
+  if (!pays.some(p => p.id === checkout.pay)) checkout.pay = pays[0]?.id;
+  fillTimes(); chips('#me-modeChips', modes, 'mode'); chips('#me-payChips', pays, 'pay'); syncCheckout();
   show('#me-coSheet');
 };
 
@@ -699,7 +746,7 @@ $('#me-sendBtn').onclick = () => {
   L.push(`*Total: ${brl(t.total)}*`, `⏱ Duração estimada: ${t.dur} min`, '');
   L.push(`👤 ${checkout.Name}`, `📱 ${checkout.Phone}`, `📅 ${d}/${m}/${y} às ${v('#me-cTime')}`);
   L.push(checkout.mode === 'domicilio' ? `🏡 A domicílio: ${checkout.Street}, ${checkout.Num}${checkout.Comp ? ' – ' + checkout.Comp : ''} – ${checkout.Hood}${checkout.City ? ', ' + checkout.City : ''} (CEP ${checkout.Cep})` : '💺 Atendimento no salão');
-  const pay = PAYS.find(p => p.id === checkout.pay).label;
+  const pay = PAYS.find(p => p.id === checkout.pay)?.label || '-';
   L.push(`💳 Pagamento: ${pay}${checkout.pay === 'dinheiro' && v('#me-cChange') ? ' (troco para ' + v('#me-cChange') + ')' : ''}`);
   if (v('#me-cObs')) L.push(`📝 Obs: ${v('#me-cObs')}`);
 
@@ -715,7 +762,36 @@ $('#me-shareBtn').onclick = async () => {
 };
 
 
-renderHeader(); renderMenu(); renderCart();
+/* ================= inicialização ================= */
+function boot() {
+  rebuildItems(); applyTheme();
+  cart = cart.filter(l => ITEMS[l.id]); // remove do carrinho serviços que deixaram de existir
+  if (coupon && !STORE.coupons?.[coupon]) coupon = null;
+  renderHeader(); renderMenu(); renderCart();
+}
+if (/[?&]preview=1/.test(location.search)) {
+  // modo pré-visualização do painel: recebe os dados a cada alteração
+  window.addEventListener('message', e => {
+    if (e.source !== window.parent || !e.data || e.data.type !== 'me-set') return;
+    if (applyData(e.data.data)) boot();
+  });
+  boot();
+  window.parent.postMessage({ type: 'me-ready', data: snapshot() }, '*');
+} else if (DATA_URL) {
+  const cached = store.get('me_data', null);
+  if (applyData(cached)) boot();
+  else $('#me-menu').innerHTML = '<div class="loading">Carregando cardápio…</div>';
+  const ctrl = new AbortController(); setTimeout(() => ctrl.abort(), 10000);
+  fetch(DATA_URL + (DATA_URL.includes('?') ? '&' : '?') + 't=' + Date.now(), { signal: ctrl.signal })
+    .then(r => r.json())
+    .then(r => {
+      const d = r && r.data !== undefined ? r.data : r;
+      if (!d || JSON.stringify(d) === JSON.stringify(cached)) { if (!cached) boot(); return; }
+      store.set('me_data', d);
+      applyData(d); boot();
+    })
+    .catch(() => { if (!cached) boot(); }); // sem internet e sem cópia salva: usa o padrão
+} else boot();
 
 })();
 </script>

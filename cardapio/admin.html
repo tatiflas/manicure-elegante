@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Painel do Cardápio</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
+  <style>
+    :root {
+      --bg: #f6f1f3; --surface: #fff; --ink: #1a1416; --muted: #7a6b70; --line: #ecdfe4;
+      --brand: #0d0b0c; --accent: #F7C8E0; --soft: #fbe7ef; --strong: #c2457c;
+      --ok: #1f9d55; --warn: #d9822b; --danger: #d6336c; --radius: 16px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Montserrat', system-ui, sans-serif; background: var(--bg); color: var(--ink); font-size: 14px; }
+    button { font: inherit; cursor: pointer; border: 0; background: none; color: inherit; }
+    input, select, textarea { font: inherit; color: inherit; }
+    .hide { display: none !important; }
+    a { color: var(--strong); }
+
+    /* ---------- login ---------- */
+    .login { min-height: 100vh; display: grid; place-items: center; padding: 24px 16px; background: radial-gradient(circle at 20% 10%, #3a1f2b, transparent 50%), var(--brand); }
+    .login .card { width: 100%; max-width: 440px; background: var(--surface); border-radius: 24px; padding: 28px 22px; box-shadow: 0 30px 60px -30px rgba(0,0,0,.6); }
+    .login h1 { font-family: 'Great Vibes', cursive; font-weight: 400; font-size: 2.4rem; text-align: center; }
+    .login p.lead { text-align: center; color: var(--muted); margin: 4px 0 18px; font-size: .85rem; }
+    .login details { background: var(--bg); border-radius: 12px; padding: 12px 14px; margin-top: 16px; font-size: .8rem; line-height: 1.5; }
+    .login summary { cursor: pointer; font-weight: 600; }
+    .login ol { padding-left: 18px; margin-top: 8px; }
+    .login li { margin-bottom: 6px; }
+    .login .err { color: var(--danger); font-size: .8rem; margin-top: 10px; min-height: 1em; text-align: center; }
+    .login .alt { display: block; margin: 14px auto 0; color: var(--muted); font-size: .8rem; text-decoration: underline; }
+
+    /* ---------- campos ---------- */
+    .f { display: block; margin-top: 12px; }
+    .f > span { display: block; font-size: .76rem; font-weight: 600; margin-bottom: 5px; }
+    .f input, .f select, .f textarea, .in { width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: #fff; outline: none; transition: border-color .2s, box-shadow .2s; }
+    .f input:focus, .f select:focus, .f textarea:focus, .in:focus { border-color: var(--strong); box-shadow: 0 0 0 3px rgba(194,69,124,.12); }
+    .f textarea { resize: vertical; min-height: 70px; }
+    .f small { display: block; color: var(--muted); font-size: .72rem; margin-top: 4px; }
+    .f small.bad { color: var(--danger); }
+    .f input[type=color] { padding: 3px; height: 40px; cursor: pointer; }
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .row3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .sw { display: flex; align-items: center; gap: 10px; margin-top: 12px; cursor: pointer; font-weight: 500; }
+    .sw input { width: 18px; height: 18px; accent-color: var(--strong); }
+
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 16px; border-radius: 12px; font-weight: 600; transition: transform .12s, background .2s, opacity .2s; white-space: nowrap; }
+    .btn:active { transform: scale(.97); }
+    .btn:disabled { opacity: .5; cursor: default; }
+    .btn.primary { background: var(--brand); color: var(--accent); }
+    .btn.soft { background: var(--soft); color: var(--ink); }
+    .btn.line { border: 1px dashed var(--strong); color: var(--strong); width: 100%; margin-top: 10px; }
+    .btn.danger { color: var(--danger); }
+    .btn.full { width: 100%; padding: 13px; margin-top: 16px; }
+    .ico { width: 32px; height: 32px; border-radius: 9px; display: inline-grid; place-items: center; font-size: .95rem; color: var(--muted); transition: background .15s; }
+    .ico:hover { background: var(--bg); color: var(--ink); }
+    .ico.del:hover { color: var(--danger); }
+
+    /* ---------- app ---------- */
+    .top { position: sticky; top: 0; z-index: 30; background: var(--brand); color: #fff; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 16px; }
+    .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .mark { width: 38px; height: 38px; border-radius: 50%; background: var(--accent); color: var(--brand); display: grid; place-items: center; font-family: 'Great Vibes', cursive; font-size: 1.3rem; flex-shrink: 0; overflow: hidden; }
+    .mark img { width: 100%; height: 100%; object-fit: cover; }
+    .brand b { display: block; font-size: .95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .state { font-size: .72rem; color: #cbb8c1; display: inline-flex; align-items: center; gap: 6px; }
+    .state::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
+    .state.dirty::before { background: var(--warn); }
+    .state.busy::before { background: var(--accent); animation: blink 1s infinite; }
+    .state.err::before { background: var(--danger); }
+    @keyframes blink { 50% { opacity: .2; } }
+    .top .actions { display: flex; gap: 8px; }
+    .top .btn.primary { background: var(--accent); color: var(--brand); }
+    .top .btn.soft { background: rgba(255,255,255,.12); color: #fff; }
+
+    .draft { background: #fff4e5; color: #7a4a10; padding: 10px 16px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: .82rem; }
+    .draft .btn { padding: 6px 12px; font-size: .8rem; }
+
+    .main { display: grid; grid-template-columns: minmax(0, 1fr) 430px; gap: 24px; max-width: 1240px; margin: 0 auto; padding: 18px 16px 60px; align-items: start; }
+    .main > div { min-width: 0; }
+    .tabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 4px; }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tabs button { padding: 9px 14px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); font-weight: 600; font-size: .82rem; white-space: nowrap; transition: background .2s, color .2s; }
+    .tabs button.on { background: var(--brand); color: var(--accent); border-color: var(--brand); }
+    .panel { margin-top: 14px; animation: fade .25s; }
+    @keyframes fade { from { opacity: 0; transform: translateY(6px); } }
+    .box { background: var(--surface); border-radius: var(--radius); padding: 16px; margin-bottom: 14px; box-shadow: 0 2px 10px -6px rgba(0,0,0,.15); }
+    .box > h2 { font-size: .98rem; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .box > p.desc { color: var(--muted); font-size: .78rem; margin-top: 3px; }
+
+    /* horários */
+    .hours { margin-top: 10px; }
+    .hrow { display: grid; grid-template-columns: 84px minmax(0, 1fr) minmax(0, 1fr); gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line); }
+    .hrow .in { min-width: 0; padding: 9px 8px; }
+    .hrow label { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: .82rem; cursor: pointer; }
+    .hrow input[type=checkbox] { width: 17px; height: 17px; accent-color: var(--strong); }
+    .hrow .closed { grid-column: span 2; color: var(--muted); font-size: .8rem; }
+
+    /* serviços */
+    .cat-h { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: start; }
+    .cat-h .tools { display: flex; }
+    .items { margin-top: 10px; }
+    .item { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 12px; border: 1px solid var(--line); margin-top: 8px; background: #fff; transition: background .2s; }
+    .item:hover { background: #fffafc; }
+    .item.off { opacity: .55; }
+    .thumb { width: 46px; height: 46px; border-radius: 10px; display: grid; place-items: center; font-size: 1.4rem; flex-shrink: 0; overflow: hidden; }
+    .thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .item .info { flex: 1; min-width: 0; cursor: pointer; }
+    .item .info b { display: block; font-size: .86rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .item .info small { color: var(--muted); font-size: .74rem; }
+    .item .info .price { color: var(--strong); font-weight: 700; }
+    .badge { font-size: .62rem; font-weight: 700; text-transform: uppercase; background: var(--bg); color: var(--muted); padding: 2px 6px; border-radius: 6px; margin-left: 4px; }
+    .item .tools { display: flex; flex-shrink: 0; }
+
+    /* opções */
+    .grp { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin-top: 10px; background: #fffafc; }
+    .grp-h { display: grid; grid-template-columns: 1fr 110px auto; gap: 8px; align-items: end; }
+    .opt { display: grid; grid-template-columns: 1fr 100px auto; gap: 8px; margin-top: 8px; align-items: center; }
+
+    /* fotos */
+    .photo { display: flex; gap: 12px; align-items: center; margin-top: 6px; }
+    .photo .thumb { width: 84px; height: 84px; font-size: 2.4rem; border-radius: 14px; }
+    .photo .btns { display: flex; flex-wrap: wrap; gap: 6px; }
+    .photo .btn { padding: 8px 12px; font-size: .8rem; }
+
+    /* banners / cupons */
+    .bn-prev { border-radius: 12px; padding: 14px; color: #fff; display: flex; justify-content: space-between; align-items: center; min-height: 64px; }
+    .bn-prev b { display: block; }
+    .bn-prev small { opacity: .9; }
+    .bn-prev .em { font-size: 2rem; }
+    .cp { display: grid; grid-template-columns: 1fr 90px 90px auto; gap: 8px; align-items: center; margin-top: 8px; }
+
+    /* aparência */
+    .presets { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; margin-top: 10px; }
+    .preset { border: 1.5px solid var(--line); border-radius: 12px; padding: 10px; text-align: left; font-size: .78rem; font-weight: 600; transition: border-color .2s; }
+    .preset:hover { border-color: var(--strong); }
+    .preset .dots { display: flex; gap: 4px; margin-bottom: 6px; }
+    .preset .dots i { width: 18px; height: 18px; border-radius: 50%; border: 1px solid rgba(0,0,0,.08); }
+
+    /* publicar */
+    pre.code { background: var(--brand); color: var(--accent); border-radius: 10px; padding: 12px; font-size: .76rem; white-space: pre-wrap; word-break: break-all; margin-top: 10px; }
+    .btnrow { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    #qr { margin-top: 12px; display: inline-block; padding: 10px; background: #fff; border-radius: 12px; border: 1px solid var(--line); }
+    #qr:empty { display: none; }
+
+    /* prévia */
+    .preview { position: sticky; top: 76px; }
+    .phone { width: 100%; max-width: 400px; margin: 0 auto; height: min(820px, calc(100vh - 140px)); border-radius: 36px; border: 10px solid var(--brand); overflow: hidden; background: #fff; box-shadow: 0 30px 60px -30px rgba(0,0,0,.5); }
+    .phone iframe { width: 100%; height: 100%; border: 0; display: block; }
+    .preview .hint { text-align: center; color: var(--muted); font-size: .75rem; margin-top: 10px; }
+    .only-mobile { display: none !important; }
+
+    @media (max-width: 960px) {
+      .main { grid-template-columns: minmax(0, 1fr); padding-bottom: 90px; }
+      .only-mobile { display: inline-flex !important; }
+      .preview { display: none; }
+      body.show-preview .preview { display: block; position: fixed; inset: 0; z-index: 60; background: var(--bg); padding: 12px; }
+      body.show-preview .phone { height: calc(100vh - 110px); max-width: 420px; }
+      .preview .close { margin: 0 auto 10px; display: flex !important; }
+    }
+    @media (max-width: 520px) {
+      .row3 { grid-template-columns: 1fr 1fr; }
+      .cp { grid-template-columns: 1fr 1fr; }
+      .cp .ico { justify-self: end; }
+      .top .btn { padding: 9px 12px; }
+      .item .tools .ico.mv { display: none; }
+    }
+
+    /* modal */
+    .modal { position: fixed; inset: 0; z-index: 70; background: rgba(13,11,12,.5); display: flex; align-items: flex-end; justify-content: center; opacity: 0; pointer-events: none; transition: opacity .25s; }
+    .modal.show { opacity: 1; pointer-events: auto; }
+    .modal-box { background: var(--surface); width: 100%; max-width: 640px; max-height: 94vh; border-radius: 22px 22px 0 0; display: flex; flex-direction: column; transform: translateY(40px); transition: transform .3s cubic-bezier(.2,.8,.2,1); }
+    .modal.show .modal-box { transform: none; }
+    @media (min-width: 700px) { .modal { align-items: center; } .modal-box { border-radius: 22px; } }
+    .modal-box header { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+    .modal-box header h3 { font-size: 1rem; }
+    .modal-body { overflow-y: auto; padding: 4px 18px 18px; flex: 1; }
+    .modal-box footer { padding: 12px 18px; border-top: 1px solid var(--line); display: flex; gap: 8px; justify-content: flex-end; }
+
+    .toast { position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 160%); background: var(--brand); color: var(--accent); padding: 11px 18px; border-radius: 999px; font-weight: 600; font-size: .84rem; z-index: 90; transition: transform .35s cubic-bezier(.2,.9,.3,1.2); max-width: calc(100vw - 32px); text-align: center; }
+    .toast.show { transform: translate(-50%, 0); }
+    .toast.err { background: var(--danger); color: #fff; }
+  </style>
+</head>
+<body>
+
+<!-- ================= ENTRAR ================= -->
+<div class="login hide" id="login">
+  <div class="card">
+    <h1>Painel do Cardápio</h1>
+    <p class="lead">Edite serviços, preços, fotos e promoções.</p>
+    <label class="f"><span>Link da planilha (App da Web)</span><input id="lgUrl" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off" /></label>
+    <label class="f"><span>Senha do painel</span><input id="lgPass" type="password" autocomplete="current-password" /></label>
+    <button class="btn primary full" id="lgGo">Entrar</button>
+    <div class="err" id="lgErr"></div>
+    <details>
+      <summary>Primeira vez? Como criar a planilha (5 min)</summary>
+      <ol>
+        <li>Crie uma planilha nova em <b>sheets.new</b> (com a conta Google da loja).</li>
+        <li>Menu <b>Extensões → Apps Script</b>. Apague o que estiver lá e cole o conteúdo do arquivo <b>planilha/Codigo.gs</b>. Salve (💾).</li>
+        <li>No topo, escolha a função <b>configurar</b> e clique em <b>▶ Executar</b>. Autorize o acesso quando o Google pedir.</li>
+        <li>Volte à planilha, abra a aba <b>Config</b> e troque a senha na célula <b>B1</b>.</li>
+        <li>No Apps Script: <b>Implantar → Nova implantação</b> → tipo <b>App da Web</b> → Executar como: <b>Eu</b> → Quem pode acessar: <b>Qualquer pessoa</b> → Implantar.</li>
+        <li>Copie o link que termina em <b>/exec</b> e cole acima, junto com a senha.</li>
+      </ol>
+    </details>
+    <button class="alt" id="lgLocal">Testar sem planilha (salva só neste navegador)</button>
+  </div>
+</div>
+
+<!-- ================= PAINEL ================= -->
+<div class="hide" id="app">
+  <header class="top">
+    <div class="brand">
+      <span class="mark" id="mark"></span>
+      <div><b id="topName">Painel</b><span class="state" id="state">Tudo salvo</span></div>
+    </div>
+    <div class="actions">
+      <button class="btn soft only-mobile" id="previewBtn">👁 Prévia</button>
+      <button class="btn primary" id="saveBtn">Salvar</button>
+    </div>
+  </header>
+  <div class="draft hide" id="draftBar">
+    <span>Há alterações que não foram salvas da última vez.</span>
+    <button class="btn primary" data-act="draft-restore">Recuperar</button>
+    <button class="btn soft" data-act="draft-discard">Descartar</button>
+  </div>
+  <div class="main">
+    <div>
+      <nav class="tabs" id="tabs">
+        <button data-tab="loja" class="on">🏪 Loja</button>
+        <button data-tab="servicos">💅 Serviços</button>
+        <button data-tab="promo">🎁 Promoções</button>
+        <button data-tab="visual">🎨 Aparência</button>
+        <button data-tab="publicar">🚀 Publicar</button>
+      </nav>
+      <div class="panel" id="panel"></div>
+    </div>
+    <aside class="preview" id="previewPane">
+      <button class="btn soft close only-mobile" id="previewClose">✕ Fechar prévia</button>
+      <div class="phone"><iframe id="frame" src="index.html?preview=1" title="Pré-visualização do cardápio"></iframe></div>
+      <p class="hint">Prévia ao vivo. As clientes só veem depois de <b>Salvar</b>.</p>
+    </aside>
+  </div>
+</div>
+
+<div class="modal" id="modal" role="dialog" aria-modal="true">
+  <div class="modal-box">
+    <header><h3 id="modalTitle"></h3><button class="ico" data-act="modal-close" aria-label="Fechar">✕</button></header>
+    <div class="modal-body" id="modalBody"></div>
+    <footer id="modalFoot"></footer>
+  </div>
+</div>
+
+<input type="file" id="fileInput" accept="image/*" hidden />
+<input type="file" id="jsonInput" accept="application/json,.json" hidden />
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================= utilitários ================= */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const brl = v => (+v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const uid = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const clone = o => JSON.parse(JSON.stringify(o));
+const LS = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } },
+  del(k) { try { localStorage.removeItem(k); } catch {} },
+};
+function toast(msg, err) {
+  const t = $('#toast'); t.textContent = msg; t.classList.toggle('err', !!err); t.classList.add('show');
+  clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), err ? 4000 : 2400);
+}
+const getPath = p => p.split('.').reduce((o, k) => o?.[k], data);
+function setPath(p, v) {
+  const ks = p.split('.'), last = ks.pop();
+  const o = ks.reduce((o, k) => o[k] ??= {}, data);
+  if (v === undefined) delete o[last]; else o[last] = v;
+}
+const move = (arr, i, d) => { const j = i + d; if (j < 0 || j >= arr.length) return; [arr[i], arr[j]] = [arr[j], arr[i]]; };
+
+/* ================= estado ================= */
+let conn = LS.get('me_admin_conn', null);   // { mode: 'sheet', url, senha } | { mode: 'local' }
+let data = null, saved = null, defaults = null, tab = 'loja', editing = null, saving = false;
+const frame = $('#frame');
+const PAYS = [['pix', '⚡ Pix'], ['credito', '💳 Crédito'], ['debito', '💳 Débito'], ['dinheiro', '💵 Dinheiro']];
+const DAYS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+const PRESETS = [
+  ['Rosa elegante', { brand: '#0d0b0c', accent: '#F7C8E0', accentSoft: '#FADADD', accentStrong: '#c2457c', bg: '#fdf6f8' }],
+  ['Nude chique', { brand: '#3b2a24', accent: '#ecd5c6', accentSoft: '#f3e4da', accentStrong: '#a0674f', bg: '#fbf7f4' }],
+  ['Lilás', { brand: '#2a1f3d', accent: '#dccbf7', accentSoft: '#ece3fb', accentStrong: '#7b4fc9', bg: '#f8f5fd' }],
+  ['Preto & dourado', { brand: '#111111', accent: '#e6c983', accentSoft: '#f5ead0', accentStrong: '#a8802a', bg: '#fbf8f1' }],
+  ['Vermelho paixão', { brand: '#1d0f12', accent: '#f6b8c0', accentSoft: '#fde3e6', accentStrong: '#c8102e', bg: '#fff7f8' }],
+  ['Verde menta', { brand: '#12302a', accent: '#bfe8d9', accentSoft: '#e1f4ec', accentStrong: '#1f8a6a', bg: '#f5fbf8' }],
+];
+const COLOR_LABELS = [
+  ['brand', 'Cor principal', 'Capa, botões e logo'],
+  ['accent', 'Cor de destaque', 'Textos sobre a cor principal'],
+  ['accentSoft', 'Destaque suave', 'Fundos de ícones e seleção'],
+  ['accentStrong', 'Preços e detalhes', 'Preços, links e selos'],
+  ['bg', 'Fundo da página', 'Cor de fundo do cardápio'],
+];
+
+/* ================= prévia (iframe com o cardápio) ================= */
+let readyResolve; const frameReady = new Promise(r => readyResolve = r);
+window.addEventListener('message', e => {
+  if (e.source !== frame.contentWindow || e.data?.type !== 'me-ready') return;
+  if (!defaults) defaults = e.data.data;
+  readyResolve();
+  if (data) sendPreview(true);
+});
+setTimeout(() => readyResolve(), 8000); // se a prévia não carregar, segue mesmo assim
+function sendPreview(now) {
+  clearTimeout(sendPreview.t);
+  const go = () => frame.contentWindow?.postMessage({ type: 'me-set', data }, '*');
+  now ? go() : (sendPreview.t = setTimeout(go, 220));
+}
+
+/* ================= conexão com a planilha ================= */
+async function api(acao, extra = {}, c = conn) {
+  let r;
+  try {
+    // corpo em texto simples evita bloqueio de CORS no Google Apps Script
+    r = await fetch(c.url, { method: 'POST', body: JSON.stringify({ acao, senha: c.senha, ...extra }) });
+  } catch { throw new Error('Não foi possível conectar. Confira o link e a internet.'); }
+  let j; try { j = await r.json(); } catch { throw new Error('Resposta inesperada. Confira se o link termina em /exec e se o acesso é "Qualquer pessoa".'); }
+  if (!j.ok) throw new Error(j.erro || 'Erro na planilha');
+  return j;
+}
+
+function normalize(d) {
+  const base = clone(defaults || { store: {}, menu: [] });
+  d = clone(d || base);
+  d.store = { ...base.store, ...d.store };
+  const s = d.store;
+  s.colors = { ...(base.store.colors || {}), ...(s.colors || {}) };
+  s.banners ||= []; s.coupons ||= {}; s.hours ||= {}; s.pays ||= PAYS.map(p => p[0]);
+  s.slotMinutes ||= 30;
+  d.menu = (d.menu || []).map(c => ({ ...c, id: c.id || uid('c'), items: (c.items || []).map(i => ({ ...i, id: i.id || uid('i') })) }));
+  return d;
+}
+
+async function start(errMsg) {
+  if (!conn) return showLogin(errMsg);
+  await frameReady;
+  let server = null;
+  try {
+    if (conn.mode === 'sheet') { server = (await api('testar')).data; }
+    else server = LS.get('me_admin_local', null);
+  } catch (e) { return showLogin(e.message); }
+  data = normalize(server);
+  saved = server ? JSON.stringify(data) : null; // nunca salvo: marca como pendente
+  $('#login').classList.add('hide'); $('#app').classList.remove('hide');
+  const draft = LS.get('me_admin_draft', null);
+  $('#draftBar').classList.toggle('hide', !(draft && JSON.stringify(draft) !== JSON.stringify(data)));
+  render(); sendPreview(true);
+}
+function showLogin(err) {
+  $('#app').classList.add('hide'); $('#login').classList.remove('hide');
+  $('#lgErr').textContent = err || '';
+  if (conn?.url) $('#lgUrl').value = conn.url;
+}
+$('#lgGo').onclick = async () => {
+  const url = $('#lgUrl').value.trim(), senha = $('#lgPass').value;
+  if (!/^https:\/\/script\.google(usercontent)?\.com\/.+\/exec(\?.*)?$/.test(url)) return ($('#lgErr').textContent = 'O link deve começar com https://script.google.com/ e terminar em /exec');
+  if (!senha) return ($('#lgErr').textContent = 'Digite a senha');
+  $('#lgGo').disabled = true; $('#lgGo').textContent = 'Conectando…'; $('#lgErr').textContent = '';
+  try { await api('testar', {}, { url, senha }); conn = { mode: 'sheet', url, senha }; LS.set('me_admin_conn', conn); await start(); }
+  catch (e) { $('#lgErr').textContent = e.message; }
+  $('#lgGo').disabled = false; $('#lgGo').textContent = 'Entrar';
+};
+$('#lgPass').addEventListener('keydown', e => e.key === 'Enter' && $('#lgGo').click());
+$('#lgLocal').onclick = () => { conn = { mode: 'local' }; LS.set('me_admin_conn', conn); start(); };
+
+/* ================= salvar ================= */
+const isDirty = () => JSON.stringify(data) !== saved;
+function updateState(text, cls) {
+  const st = $('#state');
+  if (text) { st.textContent = text; st.className = 'state ' + (cls || ''); return; }
+  const d = isDirty();
+  st.textContent = d ? (saved ? 'Alterações não salvas' : 'Ainda não publicado') : 'Tudo salvo';
+  st.className = 'state' + (d ? ' dirty' : '');
+  $('#saveBtn').disabled = !d;
+  $('#topName').textContent = data.store.name || 'Painel';
+  $('#mark').innerHTML = data.store.logoImg ? `<img src="${esc(data.store.logoImg)}" alt="">` : esc(data.store.logo || '');
+}
+function changed() {
+  LS.set('me_admin_draft', data);
+  updateState(); sendPreview();
+}
+async function save() {
+  if (saving || !isDirty()) return;
+  const wa = String(data.store.whatsapp || '').replace(/\D/g, '');
+  if (wa.length < 12 && !confirm('O WhatsApp parece incompleto (use 55 + DDD + número). Salvar mesmo assim?')) return;
+  saving = true; updateState('Salvando…', 'busy'); $('#saveBtn').disabled = true;
+  try {
+    if (conn.mode === 'sheet') await api('salvar', { dados: data });
+    else if (!LS.set('me_admin_local', data)) throw new Error('Sem espaço no navegador. Use fotos menores ou conecte a planilha.');
+    saved = JSON.stringify(data); LS.del('me_admin_draft'); $('#draftBar').classList.add('hide');
+    updateState();
+    toast(conn.mode === 'sheet' ? 'Salvo! O cardápio já está atualizado ✓' : 'Salvo neste navegador ✓');
+  } catch (e) { updateState('Erro ao salvar', 'err'); $('#saveBtn').disabled = false; toast(e.message, true); }
+  saving = false;
+}
+$('#saveBtn').onclick = save;
+document.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); if (data) save(); } });
+window.addEventListener('beforeunload', e => { if (data && isDirty()) { e.preventDefault(); e.returnValue = ''; } });
+
+/* ================= componentes ================= */
+const F = (label, path, o = {}) => `<label class="f"><span>${label}</span>${
+  o.area ? `<textarea data-path="${path}" rows="${o.rows || 3}" placeholder="${esc(o.ph)}" maxlength="${o.max || 400}">${esc(getPath(path))}</textarea>`
+         : `<input data-path="${path}" type="${o.type || 'text'}" value="${esc(getPath(path))}" placeholder="${esc(o.ph)}" ${o.num ? 'data-num inputmode="decimal"' : ''} ${o.attrs || ''} />`
+}${o.hint ? `<small ${o.hintId ? `id="${o.hintId}"` : ''}>${o.hint}</small>` : ''}</label>`;
+const CHK = (label, path, inv) => `<label class="sw"><input type="checkbox" data-path="${path}" ${inv ? 'data-inv' : ''} ${(inv ? !getPath(path) : getPath(path) !== false) ? 'checked' : ''} /><span>${label}</span></label>`;
+const thumbHTML = (i, cls = 'thumb') => `<div class="${cls}" style="background:${esc(i.bg || '#fde3ee')}">${i.img ? `<img src="${esc(i.img)}" alt="">` : esc(i.emoji || '💅')}</div>`;
+const photoBox = (path, item) => `<div class="photo">${thumbHTML(item)}<div class="btns">
+  <button class="btn soft" data-act="photo-up" data-path="${path}">📷 ${item.img ? 'Trocar foto' : 'Enviar foto'}</button>
+  <button class="btn soft" data-act="photo-url" data-path="${path}">🔗 Colar link</button>
+  ${item.img ? `<button class="btn danger" data-act="photo-del" data-path="${path}">Remover</button>` : ''}</div></div>`;
+
+/* ================= abas ================= */
+const TABS = {
+  loja() {
+    const s = data.store;
+    return `
+    <div class="box"><h2>Informações da loja</h2>
+      ${F('Nome', 'store.name')}
+      ${F('Frase da capa', 'store.tagline', { ph: 'Ex.: Beleza nas pontas dos dedos' })}
+      ${F('Especialidades (aparece abaixo do nome)', 'store.sub', { ph: 'Manicure · Pedicure · Nail Art' })}
+      <div class="row2">
+        ${F('WhatsApp que recebe os pedidos', 'store.whatsapp', { ph: '5511999999999', attrs: 'inputmode="numeric" data-digits', hint: '55 + DDD + número, só números', hintId: 'waHint' })}
+        ${F('Chave Pix', 'store.pixKey')}
+      </div>
+      <div class="row2">
+        ${F('Instagram (link)', 'store.instagram', { ph: 'https://instagram.com/sualoja' })}
+        ${F('Site (link)', 'store.site', { ph: 'vazio = sem botão' })}
+      </div>
+      ${F('Endereço', 'store.address')}
+      ${F('Endereço para o mapa', 'store.mapsQuery', { hint: 'Usado no botão "Como chegar". Vazio = sem botão.' })}
+    </div>
+    <div class="box"><h2>Atendimento e pagamento</h2>
+      ${CHK('Oferecer atendimento a domicílio', 'store.homeService')}
+      ${s.homeService !== false ? F('Taxa do atendimento a domicílio (R$)', 'store.homeFee', { num: true }) : ''}
+      <p class="f"><span>Formas de pagamento aceitas</span></p>
+      <div class="row2">${PAYS.map(([id, l]) => `<label class="sw" style="margin-top:4px"><input type="checkbox" data-pay="${id}" ${s.pays.includes(id) ? 'checked' : ''} /><span>${l}</span></label>`).join('')}</div>
+    </div>
+    <div class="box"><h2>Horário de funcionamento</h2><p class="desc">Define o aviso "Aberto agora" e os horários que a cliente pode escolher.</p>
+      <div class="hours">${DAYS.map((d, k) => { const h = s.hours[k]; return `<div class="hrow">
+        <label><input type="checkbox" data-hday="${k}" ${h ? 'checked' : ''} />${d.slice(0, 3)}</label>
+        ${h ? `<input class="in" type="time" data-hopen="${k}" value="${h[0]}" /><input class="in" type="time" data-hclose="${k}" value="${h[1]}" />` : '<span class="closed">Fechado</span>'}
+      </div>`; }).join('')}</div>
+      <label class="f"><span>Intervalo entre horários de agendamento</span><select data-path="store.slotMinutes" data-num>${[15, 20, 30, 45, 60, 90].map(m => `<option value="${m}" ${+s.slotMinutes === m ? 'selected' : ''}>${m} minutos</option>`).join('')}</select></label>
+    </div>`;
+  },
+
+  servicos() {
+    return data.menu.map((c, ci) => `
+    <div class="box">
+      <div class="cat-h">
+        <div>
+          <input class="in" style="font-weight:700" data-path="menu.${ci}.name" value="${esc(c.name)}" placeholder="Nome da categoria" />
+          <input class="in" style="margin-top:6px;font-size:.8rem" data-path="menu.${ci}.desc" value="${esc(c.desc)}" placeholder="Descrição da categoria (opcional)" />
+        </div>
+        <div class="tools">
+          <button class="ico" data-act="cat-up" data-ci="${ci}" title="Subir">↑</button>
+          <button class="ico" data-act="cat-down" data-ci="${ci}" title="Descer">↓</button>
+          <button class="ico del" data-act="cat-del" data-ci="${ci}" title="Excluir categoria">🗑</button>
+        </div>
+      </div>
+      <div class="items">${c.items.map((i, ii) => `
+        <div class="item${i.hidden ? ' off' : ''}">
+          ${thumbHTML(i)}
+          <div class="info" data-act="item-edit" data-ci="${ci}" data-ii="${ii}">
+            <b>${esc(i.name || 'Sem nome')}${i.tag ? `<span class="badge">${esc(i.tag)}</span>` : ''}${i.hidden ? '<span class="badge">Oculto</span>' : ''}</b>
+            <small><span class="price">${brl(i.price)}</span>${i.old ? ` · <s>${brl(i.old)}</s>` : ''} · ${esc(i.unit || (i.dur || 0) + ' min')}</small>
+          </div>
+          <div class="tools">
+            <button class="ico" data-act="item-vis" data-ci="${ci}" data-ii="${ii}" title="${i.hidden ? 'Mostrar no site' : 'Ocultar do site'}">${i.hidden ? '🙈' : '👁'}</button>
+            <button class="ico mv" data-act="item-up" data-ci="${ci}" data-ii="${ii}" title="Subir">↑</button>
+            <button class="ico mv" data-act="item-down" data-ci="${ci}" data-ii="${ii}" title="Descer">↓</button>
+            <button class="ico" data-act="item-edit" data-ci="${ci}" data-ii="${ii}" title="Editar">✏️</button>
+          </div>
+        </div>`).join('')}
+      </div>
+      <button class="btn line" data-act="item-add" data-ci="${ci}">+ Adicionar serviço</button>
+    </div>`).join('') + `<button class="btn primary full" data-act="cat-add">+ Nova categoria</button>`;
+  },
+
+  promo() {
+    const s = data.store, cps = Object.entries(s.coupons);
+    return `
+    <div class="box"><h2>Banners</h2><p class="desc">Faixas que passam sozinhas no topo do cardápio.</p>
+      ${s.banners.map((b, k) => { const [c1, c2] = bannerColors(b); return `
+      <div class="grp">
+        <div class="bn-prev" style="background:${esc(b.bg)}"><div><b>${esc(b.title)}</b><small>${esc(b.text)}</small></div><span class="em">${esc(b.emoji)}</span></div>
+        <div class="row2">${F('Título', `store.banners.${k}.title`, { attrs: 'data-rr' })}${F('Texto', `store.banners.${k}.text`, { attrs: 'data-rr' })}</div>
+        <div class="row3">
+          ${F('Emoji', `store.banners.${k}.emoji`, { attrs: 'data-rr maxlength="4"' })}
+          <label class="f"><span>Cor 1</span><input type="color" data-bn="${k}" data-c="0" value="${c1}" /></label>
+          <label class="f"><span>Cor 2</span><input type="color" data-bn="${k}" data-c="1" value="${c2}" /></label>
+        </div>
+        <div class="btnrow" style="justify-content:flex-end;margin-top:6px">
+          <button class="ico" data-act="bn-up" data-k="${k}">↑</button><button class="ico" data-act="bn-down" data-k="${k}">↓</button>
+          <button class="ico del" data-act="bn-del" data-k="${k}">🗑</button>
+        </div>
+      </div>`; }).join('')}
+      <button class="btn line" data-act="bn-add">+ Adicionar banner</button>
+    </div>
+    <div class="box"><h2>Cupons de desconto</h2><p class="desc">A cliente digita o código no carrinho.</p>
+      ${cps.length ? '<div class="cp" style="font-size:.72rem;font-weight:600;color:var(--muted)"><span>Código</span><span>Tipo</span><span>Valor</span><span></span></div>' : ''}
+      ${cps.map(([code, c], k) => `<div class="cp" data-cprow>
+        <input class="in" data-cp="code" value="${esc(code)}" style="text-transform:uppercase" placeholder="CUPOM10" />
+        <select class="in" data-cp="type"><option value="pct" ${c.type === 'pct' ? 'selected' : ''}>%</option><option value="fix" ${c.type === 'fix' ? 'selected' : ''}>R$</option></select>
+        <input class="in" data-cp="value" inputmode="decimal" value="${esc(c.value)}" />
+        <button class="ico del" data-act="cp-del" data-code="${esc(code)}">🗑</button>
+      </div>`).join('')}
+      <button class="btn line" data-act="cp-add">+ Adicionar cupom</button>
+    </div>`;
+  },
+
+  visual() {
+    const c = data.store.colors;
+    return `
+    <div class="box"><h2>Paletas prontas</h2>
+      <div class="presets">${PRESETS.map(([n, p], k) => `<button class="preset" data-act="preset" data-k="${k}"><div class="dots">${['brand', 'accent', 'accentStrong', 'bg'].map(x => `<i style="background:${p[x]}"></i>`).join('')}</div>${n}</button>`).join('')}</div>
+    </div>
+    <div class="box"><h2>Cores</h2>
+      <div class="row2">${COLOR_LABELS.map(([k, l, h]) => `<label class="f"><span>${l}</span><input type="color" data-path="store.colors.${k}" value="${esc(c[k] || '#000000')}" /><small>${h}</small></label>`).join('')}</div>
+    </div>
+    <div class="box"><h2>Logo</h2><p class="desc">Use uma imagem quadrada ou deixe só as iniciais.</p>
+      ${F('Iniciais / texto do logo', 'store.logo', { attrs: 'maxlength="4"' })}
+      <div class="photo"><div class="thumb" style="border-radius:50%;background:${esc(c.brand)};color:${esc(c.accent)};font-family:'Great Vibes',cursive;font-size:2rem">${data.store.logoImg ? `<img src="${esc(data.store.logoImg)}" alt="">` : esc(data.store.logo)}</div>
+        <div class="btns"><button class="btn soft" data-act="photo-up" data-path="store.logoImg">📷 Enviar logo</button><button class="btn soft" data-act="photo-url" data-path="store.logoImg">🔗 Colar link</button>
+        ${data.store.logoImg ? '<button class="btn danger" data-act="photo-del" data-path="store.logoImg">Remover</button>' : ''}</div></div>
+    </div>`;
+  },
+
+  publicar() {
+    const sheet = conn.mode === 'sheet';
+    return `
+    <div class="box"><h2>${sheet ? '✅ Conectado à planilha' : '🧪 Modo de teste'}</h2>
+      ${sheet ? `
+        <p class="desc">Tudo que você salva aqui vai para a planilha. Para o cardápio ler os dados, cole a linha abaixo <b>uma única vez</b> no arquivo <b>index.html</b> (e no <b>elementor.html</b>, se usar), no lugar de <code>const DATA_URL = '';</code></p>
+        <pre class="code" id="code">const DATA_URL = '${esc(conn.url)}';</pre>
+        <div class="btnrow"><button class="btn soft" data-act="copy-code">📋 Copiar linha</button></div>`
+      : `<p class="desc">Os dados ficam só neste navegador. Para publicar de verdade, conecte uma planilha do Google (recomendado) ou baixe o arquivo <b>dados.json</b>, coloque ao lado do index.html e use <code>const DATA_URL = 'dados.json';</code>.</p>
+        <div class="btnrow"><button class="btn primary" data-act="logout">Conectar planilha</button><button class="btn soft" data-act="export" data-name="dados.json">⬇ Baixar dados.json</button></div>`}
+    </div>
+    <div class="box"><h2>QR Code do cardápio</h2><p class="desc">Para imprimir no balcão, cartão de visita ou story.</p>
+      ${F('Link público do cardápio', 'store.publicUrl', { ph: 'https://seusite.com/cardapio/' })}
+      <div class="btnrow"><button class="btn primary" data-act="qr">Gerar QR Code</button><button class="btn soft hide" id="qrDl" data-act="qr-dl">⬇ Baixar imagem</button></div>
+      <div id="qr"></div>
+    </div>
+    <div class="box"><h2>Cópias de segurança</h2>
+      <div class="btnrow">
+        <button class="btn soft" data-act="export">⬇ Exportar cópia</button>
+        <button class="btn soft" data-act="import">⬆ Importar cópia</button>
+        ${sheet ? '<button class="btn soft" data-act="undo">↶ Voltar para a versão salva anterior</button>' : ''}
+        <button class="btn danger" data-act="reset">Recomeçar com o exemplo</button>
+      </div>
+    </div>
+    <div class="box"><h2>Conta</h2><div class="btnrow"><button class="btn danger" data-act="logout">Sair deste aparelho</button></div></div>`;
+  },
+};
+
+function render() {
+  document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+  $('#panel').innerHTML = TABS[tab]();
+  $('#panel').style.animation = 'none'; void $('#panel').offsetWidth; $('#panel').style.animation = '';
+  updateState(); checkWa();
+}
+$('#tabs').onclick = e => { const b = e.target.closest('button'); if (b) { tab = b.dataset.tab; render(); } };
+function checkWa() {
+  const h = document.getElementById('waHint'); if (!h) return;
+  const n = String(data.store.whatsapp || '').replace(/\D/g, '');
+  const ok = n.length >= 12 && n.length <= 13 && n.startsWith('55');
+  h.className = ok || !n ? '' : 'bad';
+  h.textContent = ok ? `✓ +${n.slice(0, 2)} (${n.slice(2, 4)}) ${n.slice(4)}` : '55 + DDD + número, só números (ex.: 5511999999999)';
+}
+const bannerColors = b => { const m = String(b.bg || '').match(/#[0-9a-f]{6}/gi) || []; return [m[0] || '#c2457c', m[1] || m[0] || '#7a1f4b']; };
+
+/* ================= edição de campos ================= */
+function onInput(e) {
+  const el = e.target;
+  if (el.dataset.path) {
+    let v = el.type === 'checkbox' ? el.checked : el.value;
+    if ('inv' in el.dataset) v = !v ? true : undefined;
+    else if ('num' in el.dataset) v = v === '' ? (/\.(price|dur)$/.test(el.dataset.path) ? 0 : undefined) : Math.max(0, parseFloat(String(v).replace(',', '.')) || 0);
+    else if ('digits' in el.dataset) { v = v.replace(/\D/g, ''); el.value = v; }
+    setPath(el.dataset.path, v);
+    if (el.dataset.path === 'store.whatsapp') checkWa();
+    changed();
+    if (el.type === 'checkbox' || 'rr' in el.dataset) rerenderSoon(el);
+    if (editing && el.closest('#modalBody')) refreshModalThumb();
+    return;
+  }
+  const s = data.store;
+  if (el.dataset.pay) {
+    const on = [...document.querySelectorAll('[data-pay]:checked')].map(x => x.dataset.pay);
+    if (!on.length) { el.checked = true; return toast('Deixe pelo menos uma forma de pagamento', true); }
+    s.pays = on; return changed();
+  }
+  if (el.dataset.hday !== undefined) { const k = el.dataset.hday; s.hours[k] = el.checked ? ['09:00', '18:00'] : null; changed(); return render(); }
+  if (el.dataset.hopen !== undefined || el.dataset.hclose !== undefined) {
+    const k = el.dataset.hopen ?? el.dataset.hclose, h = s.hours[k];
+    h[el.dataset.hopen !== undefined ? 0 : 1] = el.value || h[0];
+    return changed();
+  }
+  if (el.dataset.bn !== undefined) {
+    const b = s.banners[el.dataset.bn], cs = bannerColors(b); cs[+el.dataset.c] = el.value;
+    b.bg = `linear-gradient(135deg,${cs[0]},${cs[1]})`; el.closest('.grp').querySelector('.bn-prev').style.background = b.bg;
+    return changed();
+  }
+  if (el.dataset.cp) {
+    const obj = {};
+    document.querySelectorAll('[data-cprow]').forEach(r => {
+      const code = r.querySelector('[data-cp=code]').value.trim().toUpperCase().replace(/\s+/g, '');
+      const type = r.querySelector('[data-cp=type]').value, value = Math.max(0, parseFloat(r.querySelector('[data-cp=value]').value.replace(',', '.')) || 0);
+      if (code) obj[code] = { type, value, label: type === 'pct' ? `${value}% de desconto` : `${brl(value)} de desconto` };
+    });
+    s.coupons = obj; return changed();
+  }
+}
+let rrTimer;
+function rerenderSoon(el) {
+  // atualiza a lista sem tirar o foco de quem está digitando
+  clearTimeout(rrTimer);
+  rrTimer = setTimeout(() => { if (el.type === 'checkbox' || document.activeElement !== el) render(); else el.addEventListener('blur', () => render(), { once: true }); }, el.type === 'checkbox' ? 0 : 400);
+}
+document.addEventListener('input', e => { if (e.target.closest('#panel, #modalBody')) onInput(e); });
+document.addEventListener('change', e => { if (e.target.dataset.move !== undefined && editing) moveItem(+e.target.value); });
+
+/* ================= editor de serviço ================= */
+function openItem(ci, ii) { editing = { ci, ii }; renderModal(); $('#modal').classList.add('show'); }
+function closeModal() { $('#modal').classList.remove('show'); editing = null; render(); }
+function itemPath() { return `menu.${editing.ci}.items.${editing.ii}`; }
+function renderModal() {
+  const p = itemPath(), i = getPath(p);
+  $('#modalTitle').textContent = i.name || 'Novo serviço';
+  $('#modalBody').innerHTML = `
+    <div class="f"><span>Foto</span>${photoBox(p + '.img', i)}</div>
+    ${F('Nome do serviço', p + '.name')}
+    ${F('Descrição', p + '.desc', { area: true, ph: 'O que está incluso, materiais, duração...' })}
+    <div class="row3">
+      ${F('Preço (R$)', p + '.price', { num: true })}
+      ${F('Preço antigo (riscado)', p + '.old', { num: true, ph: 'opcional' })}
+      ${F('Duração (min)', p + '.dur', { num: true })}
+    </div>
+    <div class="row3">
+      ${F('Texto no lugar da duração', p + '.unit', { ph: 'ex.: por unha' })}
+      ${F('Selo', p + '.tag', { ph: 'ex.: Promo' })}
+      ${F('Emoji (sem foto)', p + '.emoji', { attrs: 'maxlength="4"' })}
+    </div>
+    <div class="row2">
+      <label class="f"><span>Cor de fundo (sem foto)</span><input type="color" data-path="${p}.bg" value="${esc(i.bg || '#fde3ee')}" /></label>
+      <label class="f"><span>Categoria</span><select data-move>${data.menu.map((c, k) => `<option value="${k}" ${k === editing.ci ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label>
+    </div>
+    ${CHK('Visível no cardápio', p + '.hidden', true)}
+    <div class="f" style="margin-top:18px"><span>Opções e adicionais</span><small>Ex.: formato da unha, cor do esmalte, extras com preço.</small></div>
+    ${(i.groups || []).map((g, gi) => `
+      <div class="grp">
+        <div class="grp-h">
+          ${F('Nome do grupo', `${p}.groups.${gi}.name`, { ph: 'Ex.: Formato' })}
+          <label class="f"><span>Cliente escolhe</span><select data-path="${p}.groups.${gi}.max" data-num>${[1, 2, 3, 4, 5, 10].map(n => `<option value="${n}" ${+g.max === n ? 'selected' : ''}>${n === 1 ? 'só 1' : 'até ' + n}</option>`).join('')}</select></label>
+          <button class="ico del" data-act="grp-del" data-gi="${gi}" title="Excluir grupo">🗑</button>
+        </div>
+        ${(g.options || []).map((o, oi) => `<div class="opt">
+          <input class="in" data-path="${p}.groups.${gi}.options.${oi}.n" value="${esc(o.n)}" placeholder="Nome da opção" />
+          <input class="in" data-path="${p}.groups.${gi}.options.${oi}.p" data-num inputmode="decimal" value="${esc(o.p ?? 0)}" placeholder="+ R$" />
+          <button class="ico del" data-act="opt-del" data-gi="${gi}" data-oi="${oi}">✕</button>
+        </div>`).join('')}
+        <button class="btn line" style="margin-top:8px" data-act="opt-add" data-gi="${gi}">+ Opção</button>
+      </div>`).join('')}
+    <button class="btn line" data-act="grp-add">+ Grupo de opções</button>`;
+  $('#modalFoot').innerHTML = `
+    <button class="btn danger" data-act="item-del" style="margin-right:auto">🗑 Excluir</button>
+    <button class="btn soft" data-act="item-dup">Duplicar</button>
+    <button class="btn primary" data-act="modal-close">Pronto</button>`;
+}
+function refreshModalThumb() {
+  const i = getPath(itemPath()), t = $('#modalBody .photo .thumb');
+  if (t) { t.style.background = i.bg || '#fde3ee'; if (!i.img) t.textContent = i.emoji || '💅'; }
+  $('#modalTitle').textContent = i.name || 'Novo serviço';
+}
+function moveItem(to) {
+  const { ci, ii } = editing; if (to === ci) return;
+  const [it] = data.menu[ci].items.splice(ii, 1);
+  data.menu[to].items.push(it);
+  editing = { ci: to, ii: data.menu[to].items.length - 1 };
+  changed(); renderModal(); toast('Movido para ' + data.menu[to].name);
+}
+
+/* ================= fotos ================= */
+let photoTarget = null;
+function resize(file, max = 1000) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.onload = () => {
+      const k = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(img.src); res(c.toDataURL('image/jpeg', .82));
+    };
+    img.onerror = () => rej(new Error('Não consegui abrir essa imagem'));
+    img.src = URL.createObjectURL(file);
+  });
+}
+$('#fileInput').onchange = async e => {
+  const file = e.target.files[0]; e.target.value = ''; if (!file || !photoTarget) return;
+  const target = photoTarget;
+  try {
+    toast('Enviando foto…');
+    const dataUrl = await resize(file, target === 'store.logoImg' ? 500 : 1000);
+    let url = dataUrl;
+    if (conn.mode === 'sheet') url = (await api('foto', { nome: file.name, tipo: 'image/jpeg', base64: dataUrl.split(',')[1] })).url;
+    setPath(target, url); changed();
+    editing ? renderModal() : render();
+    toast('Foto adicionada ✓');
+  } catch (err) { toast(err.message, true); }
+};
+
+/* ================= ações (botões) ================= */
+const DEFAULT_ITEM = () => ({ id: uid('i'), name: 'Novo serviço', desc: '', price: 0, dur: 30, emoji: '💅', bg: '#fde3ee' });
+const ACT = {
+  'modal-close': () => closeModal(),
+  'draft-restore': () => { data = normalize(LS.get('me_admin_draft', data)); $('#draftBar').classList.add('hide'); changed(); render(); toast('Alterações recuperadas'); },
+  'draft-discard': () => { LS.del('me_admin_draft'); $('#draftBar').classList.add('hide'); },
+
+  'cat-add': () => { data.menu.push({ id: uid('c'), name: 'Nova categoria', desc: '', items: [] }); changed(); render(); scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }); },
+  'cat-up': d => { move(data.menu, +d.ci, -1); changed(); render(); },
+  'cat-down': d => { move(data.menu, +d.ci, 1); changed(); render(); },
+  'cat-del': d => {
+    const c = data.menu[+d.ci];
+    if (!confirm(`Excluir a categoria "${c.name}"${c.items.length ? ` e seus ${c.items.length} serviços` : ''}?`)) return;
+    data.menu.splice(+d.ci, 1); changed(); render();
+  },
+  'item-add': d => { data.menu[+d.ci].items.push(DEFAULT_ITEM()); changed(); openItem(+d.ci, data.menu[+d.ci].items.length - 1); },
+  'item-edit': d => openItem(+d.ci, +d.ii),
+  'item-up': d => { move(data.menu[+d.ci].items, +d.ii, -1); changed(); render(); },
+  'item-down': d => { move(data.menu[+d.ci].items, +d.ii, 1); changed(); render(); },
+  'item-vis': d => { const i = data.menu[+d.ci].items[+d.ii]; i.hidden ? delete i.hidden : (i.hidden = true); changed(); render(); toast(i.hidden ? 'Oculto do cardápio' : 'Visível no cardápio'); },
+  'item-del': () => {
+    const { ci, ii } = editing, i = data.menu[ci].items[ii];
+    if (!confirm(`Excluir "${i.name}"?`)) return;
+    data.menu[ci].items.splice(ii, 1); changed(); closeModal();
+  },
+  'item-dup': () => {
+    const { ci, ii } = editing, c = clone(data.menu[ci].items[ii]);
+    c.id = uid('i'); c.name += ' (cópia)'; data.menu[ci].items.splice(ii + 1, 0, c);
+    changed(); editing = { ci, ii: ii + 1 }; renderModal(); toast('Serviço duplicado');
+  },
+  'grp-add': () => { const i = getPath(itemPath()); (i.groups ||= []).push({ name: '', max: 1, options: [{ n: '', p: 0 }] }); changed(); renderModal(); },
+  'grp-del': d => { const i = getPath(itemPath()); i.groups.splice(+d.gi, 1); if (!i.groups.length) delete i.groups; changed(); renderModal(); },
+  'opt-add': d => { getPath(itemPath()).groups[+d.gi].options.push({ n: '', p: 0 }); changed(); renderModal(); },
+  'opt-del': d => { getPath(itemPath()).groups[+d.gi].options.splice(+d.oi, 1); changed(); renderModal(); },
+
+  'photo-up': d => { photoTarget = d.path; $('#fileInput').click(); },
+  'photo-url': d => {
+    const u = prompt('Cole o link da imagem (deve começar com https://):', getPath(d.path) || '');
+    if (u === null) return;
+    if (u && !/^https:\/\//.test(u.trim())) return toast('O link deve começar com https://', true);
+    setPath(d.path, u.trim() || undefined); changed(); editing ? renderModal() : render();
+  },
+  'photo-del': d => { setPath(d.path, d.path === 'store.logoImg' ? '' : undefined); changed(); editing ? renderModal() : render(); },
+
+  'bn-add': () => { data.store.banners.push({ title: 'Nova promoção', text: 'Descreva a oferta', emoji: '✨', bg: 'linear-gradient(135deg,#c2457c,#7a1f4b)' }); changed(); render(); },
+  'bn-up': d => { move(data.store.banners, +d.k, -1); changed(); render(); },
+  'bn-down': d => { move(data.store.banners, +d.k, 1); changed(); render(); },
+  'bn-del': d => { if (confirm('Excluir este banner?')) { data.store.banners.splice(+d.k, 1); changed(); render(); } },
+  'cp-add': () => { let n = 1; while (data.store.coupons['CUPOM' + n]) n++; data.store.coupons['CUPOM' + n] = { type: 'pct', value: 10, label: '10% de desconto' }; changed(); render(); },
+  'cp-del': d => { delete data.store.coupons[d.code]; changed(); render(); },
+
+  preset: d => { data.store.colors = { ...PRESETS[+d.k][1] }; changed(); render(); toast('Paleta "' + PRESETS[+d.k][0] + '" aplicada'); },
+
+  'copy-code': () => navigator.clipboard?.writeText($('#code').textContent).then(() => toast('Copiado ✓'), () => toast('Selecione e copie manualmente', true)),
+  qr: () => {
+    const url = (data.store.publicUrl || '').trim();
+    if (!/^https?:\/\//.test(url)) return toast('Preencha o link público do cardápio', true);
+    if (!window.QRCode) return toast('Gerador de QR indisponível (sem internet?)', true);
+    $('#qr').innerHTML = ''; new QRCode($('#qr'), { text: url, width: 220, height: 220, colorDark: data.store.colors.brand || '#000', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
+    $('#qrDl').classList.remove('hide');
+  },
+  'qr-dl': () => { const c = $('#qr canvas'); if (!c) return; const a = document.createElement('a'); a.href = c.toDataURL('image/png'); a.download = 'qrcode-cardapio.png'; a.click(); },
+  export: d => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+    a.download = d.name || `cardapio-${new Date().toISOString().slice(0, 10)}.json`; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  },
+  import: () => $('#jsonInput').click(),
+  undo: async () => {
+    if (!confirm('Voltar o cardápio publicado para a versão salva anterior?')) return;
+    try { const r = await api('desfazer'); data = normalize(r.data); saved = JSON.stringify(data); LS.del('me_admin_draft'); render(); sendPreview(true); toast('Versão anterior restaurada ✓'); }
+    catch (e) { toast(e.message, true); }
+  },
+  reset: () => { if (!defaults || !confirm('Substituir tudo pelo cardápio de exemplo? (só vale depois de Salvar)')) return; data = normalize(defaults); changed(); render(); },
+  logout: () => {
+    if (isDirty() && !confirm('Há alterações não salvas. Sair mesmo assim?')) return;
+    LS.del('me_admin_conn'); LS.del('me_admin_draft'); conn = null; data = null; showLogin();
+  },
+};
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  ACT[b.dataset.act]?.(b.dataset, b);
+});
+$('#modal').addEventListener('click', e => { if (e.target.id === 'modal') closeModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && editing) closeModal(); });
+$('#jsonInput').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  try {
+    const d = JSON.parse(await f.text());
+    if (!d.store || !Array.isArray(d.menu)) throw 0;
+    data = normalize(d); changed(); render(); toast('Cópia importada. Clique em Salvar para publicar.');
+  } catch { toast('Arquivo inválido', true); }
+};
+$('#previewBtn').onclick = () => { document.body.classList.add('show-preview'); sendPreview(true); };
+$('#previewClose').onclick = () => document.body.classList.remove('show-preview');
+
+start();
+</script>
+</body>
+</html>

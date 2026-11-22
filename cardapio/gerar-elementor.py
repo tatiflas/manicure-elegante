@@ -121,9 +121,8 @@ js = js.replace("document.querySelectorAll('section.category')", "APP.querySelec
 js = js.replace("document.querySelectorAll('.cat')", "APP.querySelectorAll('.cat')")
 js = js.replace("document.querySelectorAll('[data-close]')", "LAYER.querySelectorAll('[data-close]')")
 js = js.replace("document.querySelectorAll('.sheet')", "LAYER.querySelectorAll('.sheet')")
-js = js.replace("    ['../manicure-elegante.html', '🌐', 'Site'],\n", "    STORE.site && [STORE.site, '🌐', 'Site'],\n")
-js = js.replace("].map(([href, i, l])", "].filter(Boolean).map(([href, i, l])")
-js = js.replace("  instagram: 'https://instagram.com',", "  instagram: 'https://instagram.com',\n  site: '',                            // link do seu site (vazio = esconde o botão)")
+js = js.replace("site: '../manicure-elegante.html',", "site: '',                            ")
+js = js.replace("const THEME_ROOTS = [document.documentElement];", "const THEME_ROOTS = [APP, LAYER];")
 js = re.sub(r"\n/\* PWA:[^\n]*\n[^\n]*\n", '\n', js)
 js = js.replace('// botão voltar do celular fecha a gaveta', '')
 assert "serviceWorker" not in js and 'manicure-elegante.html' not in js
