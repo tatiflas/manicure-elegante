@@ -1,0 +1,11 @@
+{
+  "name": "Manicure Elegante – Cardápio",
+  "short_name": "Manicure Elegante",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0d0b0c",
+  "theme_color": "#0d0b0c",
+  "icons": [{ "src": "icon.svg", "type": "image/svg+xml", "sizes": "any", "purpose": "any maskable" }]
+}
